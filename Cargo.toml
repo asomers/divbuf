@@ -1,0 +1,17 @@
+[package]
+name = "divbuf"
+version = "0.1.0-pre"
+authors = ["Alan Somers <asomers@gmail.com>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/asomers/divbuf"
+description = """
+Buffer object that can be recursively divided into smaller buffers
+"""
+categories = ["data-structures"]
+keywords = ["buffers", "io", "zero-copy"]
+exclude       = [
+    ".gitignore",
+]
+
+[dependencies]
