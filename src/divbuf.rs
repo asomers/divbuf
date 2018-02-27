@@ -65,33 +65,37 @@ impl DivBufShared {
             &mut *self.inner
         };
         if inner.refcount.fetch_add(1, Acquire) & WRITER_FLAG != 0{
-            inner.refcount.fetch_sub(1, Release);
+            inner.refcount.fetch_sub(1, Relaxed);
             None
         } else {
-            let p = inner.vec.as_mut_ptr();//.as_mut_ptr();
+            let p = inner.vec.as_mut_ptr();
             let l = inner.vec.len();
             Some(DivBuf {
-                inner: self.inner, //Inner {
-                    //vec: self.inner.vec,
-                //}
+                inner: self.inner,
                 ptr: p,
                 len: l
             })
         }
     }
 
+    /// Try to create a mutable `DivBufMt` that refers to the entirety of this
+    /// buffer.  Will fail if there are any `DivBufMut` or `DivBuf` objects
+    /// referring to this buffer.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    ///
+    /// let mut dbs = DivBufShared::with_capacity(4096);
+    /// let dbm = dbs.try_mut().unwrap();
+    /// ```
     pub fn try_mut(&mut self) -> Option<DivBufMut> {
         let inner = unsafe {
             &mut *self.inner
         };
         if inner.refcount.compare_and_swap(0, WRITER_FLAG + 1, Acquire) == 0 { 
-            //let v = self.inner.vec; //&mut self.vec as *mut Vec<u8>;
             let p = inner.vec.as_mut_ptr();
             let l = inner.vec.len();
-            //let c = self.vec.capacity();
-            //let mut v = unsafe {
-                //Vec::<u8>::from_raw_parts( p, l, c)
-            //};
             Some(DivBufMut {
                 inner: self.inner,
                 ptr: p,
@@ -111,17 +115,13 @@ impl DivBufShared {
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
-        let mut inner = Inner {
+        let mut inner = Box::new(Inner {
             vec: Vec::with_capacity(capacity),
             refcount: AtomicUsize::new(0)
-        };
+        });
         let buffer = DivBufShared{
-            inner: unsafe {
-                &mut inner as *mut Inner
-            }
+            inner: Box::into_raw(inner)
         };
-        // Don't destroy inner,because buffer owns it now.
-        mem::forget(inner);
         buffer
     }
 }
@@ -136,12 +136,13 @@ impl Drop for DivBufShared {
         };
         if inner.refcount.load(Relaxed) == 0 { 
             unsafe {
-                ptr::drop_in_place(self.inner);
+                Box::from_raw(self.inner);
             }
         } else {
             // We don't currently allow dropping a DivBufShared until all of its
             // child DivBufs and DivBufMuts have been dropped, too.
-            panic!("Dropping a DivBufShared that's still referenced");
+            panic!("Dropping a DivBufShared that's still referenced: {:?}",
+                   inner.refcount.load(Relaxed));
         }
     }
 }
@@ -285,6 +286,33 @@ impl DivBufMut {
 
     pub fn unsplit(&mut self, other: DivBufMut) {
         unimplemented!();
+    }
+}
+
+impl Drop for DivBufMut {
+    fn drop(&mut self) {
+        let inner = unsafe {
+            &mut *self.inner
+        };
+        // if we get here, we know that:
+        // * nobody else has a reference to this DivBufMut
+        // * There are no living DivBufs for this buffer
+        if inner.refcount.fetch_sub(1, Release) != WRITER_FLAG + 1 {
+            // if we get here, we know that there are other DivBufMuts for this
+            // buffer.  Don't clear the flag.
+        } else {
+            // if we get here, we know that there are no other DivBufMuts for
+            // this buffer.  We must clear the flag.  We're safe against races
+            // versus:
+            // * DivBufShared::try_mut: that function will harmlessly fail sine
+            //      WRITER_FLAG is still set.
+            // * DivBufMut::drop: cannot be called since there are no other
+            //      DivBufMuts for this buffer
+            // * DivBufShared::try: that function may increase the refcount
+            //      briefly, but it's ok because the two fetch_sub operations
+            //      are commutative
+            inner.refcount.fetch_sub(WRITER_FLAG, Release);
+        }
     }
 }
 
