@@ -1,32 +1,42 @@
 // vim: tw=80
-use std::{hash, ops};
-use std::sync::atomic::{AtomicUsize, AtomicPtr};
+#![allow(unused)]
+
+use std::{hash, mem, ops, ptr};
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
 
 
+const WRITER_FLAG: usize = isize::min_value() as usize;
+
+#[derive(Debug)]
+struct Inner {
+    vec: Vec<u8>,
+    /// Stores the number of references, _and_ whether those references are
+    /// writers or readers.  If the high bit is set, then the buffer is open in
+    /// writing mode.  Otherwise, it's open in reading mode or not open at all.
+    refcount: AtomicUsize,
+}
+
 #[derive(Debug)]
 pub struct DivBufShared {
-    // Basically needs
-    // Vec
-    // writer count
-    // reader count
-    vec: *mut Vec<u8>,
-    readers: AtomicUsize,
-    writers: AtomicUsize,
+    inner: *mut Inner,
+    //writing: AtomicBool
+    //readers: AtomicUsize,
+    //writers: AtomicUsize,
 }
 
 #[derive(Debug)]
 pub struct DivBuf {
-    vec: Box<[u8]>,
+    inner: *mut Inner,
     ptr: *mut u8,
-    len: usize
+    len: usize,
 }
 
 #[derive(Debug)]
 pub struct DivBufMut {
-    vec: Vec<u8>,
+    inner: *mut Inner,
     ptr: *mut u8,
-    len: usize
+    len: usize,
 }
 
 impl DivBufShared {
@@ -38,13 +48,58 @@ impl DivBufShared {
         unimplemented!();
     }
 
-    pub fn try(&self) -> Option<DivBuf> {
-        unimplemented!();
+    /// Try to create a read-only `DivBuf` that refers to the entirety of this
+    /// buffer.  Will fail if there are any `DivBufMut` objects referring to
+    /// this buffer.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    ///
+    /// let mut dbs = DivBufShared::with_capacity(4096);
+    /// let db = dbs.try().unwrap();
+    /// ```
+    ///
+    pub fn try(&mut self) -> Option<DivBuf> {
+        let inner = unsafe {
+            &mut *self.inner
+        };
+        if inner.refcount.fetch_add(1, Acquire) & WRITER_FLAG != 0{
+            inner.refcount.fetch_sub(1, Release);
+            None
+        } else {
+            let p = inner.vec.as_mut_ptr();//.as_mut_ptr();
+            let l = inner.vec.len();
+            Some(DivBuf {
+                inner: self.inner, //Inner {
+                    //vec: self.inner.vec,
+                //}
+                ptr: p,
+                len: l
+            })
+        }
     }
 
-    pub fn try_mut(&self) -> Option<DivBufMut> {
-        // should be compare_xchange?
-        self.writers.fetch_add(1, Acquire);
+    pub fn try_mut(&mut self) -> Option<DivBufMut> {
+        let inner = unsafe {
+            &mut *self.inner
+        };
+        if inner.refcount.compare_and_swap(0, WRITER_FLAG + 1, Acquire) == 0 { 
+            //let v = self.inner.vec; //&mut self.vec as *mut Vec<u8>;
+            let p = inner.vec.as_mut_ptr();
+            let l = inner.vec.len();
+            //let c = self.vec.capacity();
+            //let mut v = unsafe {
+                //Vec::<u8>::from_raw_parts( p, l, c)
+            //};
+            Some(DivBufMut {
+                inner: self.inner,
+                ptr: p,
+                len: l
+            })
+        } else {
+            None
+        }
     }
 
     pub fn from_static(bytes: &'static [u8]) ->  Self {
@@ -56,7 +111,38 @@ impl DivBufShared {
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
-        unimplemented!();
+        let mut inner = Inner {
+            vec: Vec::with_capacity(capacity),
+            refcount: AtomicUsize::new(0)
+        };
+        let buffer = DivBufShared{
+            inner: unsafe {
+                &mut inner as *mut Inner
+            }
+        };
+        // Don't destroy inner,because buffer owns it now.
+        mem::forget(inner);
+        buffer
+    }
+}
+
+impl Drop for DivBufShared {
+    fn drop(&mut self) {
+        // if we get here, that means that nobody else has a reference to this
+        // DivBufShared.  So we don't have to worry that somebody else will
+        // reference self.inner while we're Drop'ing it.
+        let inner = unsafe {
+            &mut *self.inner
+        };
+        if inner.refcount.load(Relaxed) == 0 { 
+            unsafe {
+                ptr::drop_in_place(self.inner);
+            }
+        } else {
+            // We don't currently allow dropping a DivBufShared until all of its
+            // child DivBufs and DivBufMuts have been dropped, too.
+            panic!("Dropping a DivBufShared that's still referenced");
+        }
     }
 }
 
@@ -147,6 +233,15 @@ impl From<DivBufMut> for DivBuf {
 impl Clone for DivBuf {
     fn clone(&self) -> DivBuf {
         unimplemented!();
+    }
+}
+
+impl Drop for DivBuf {
+    fn drop(&mut self) {
+        let inner = unsafe {
+            &mut *self.inner
+        };
+        inner.refcount.fetch_sub(1, Release);
     }
 }
 
