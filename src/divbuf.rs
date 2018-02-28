@@ -474,6 +474,15 @@ impl PartialEq<[u8]> for DivBuf {
 
 
 impl DivBufMut {
+    /// Extend self from iterator, without checking for validity
+    fn extend_unchecked<'a, T>(&mut self, iter: T)
+        where T: IntoIterator<Item=&'a u8> {
+        let inner = unsafe { &mut *self.inner };
+        let oldlen = inner.vec.len();
+        inner.vec.extend(iter);
+        self.len += inner.vec.len() - oldlen;
+    }
+
     /// Returns true if the `DivBufMut` has length 0
     pub fn is_empty(&self) -> bool {
         self.len == 0
@@ -591,12 +600,10 @@ impl DivBufMut {
     /// ```
     ///
     /// [`extend`]: #method.extend
-    //TODO optimize by creating a common extend_unchecked method for try_extend
-    //and extend to use.
     pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), &'static str>
         where T: IntoIterator<Item=&'a u8> {
         if self.is_terminal() {
-            self.extend(iter);
+            self.extend_unchecked(iter);
             Ok(())
         } else {
             Err("Can't extend into the middle of a buffer")
@@ -717,13 +724,10 @@ impl Drop for DivBufMut {
 impl<'a> Extend<&'a u8> for DivBufMut {
     fn extend<T>(&mut self, iter: T)
         where T: IntoIterator<Item = &'a u8> {
-        let inner = unsafe { &mut *self.inner };
         // panic if this DivBufMut does not extend to the end of the
         // DivBufShared
         assert!(self.is_terminal(), "Can't extend into the middle of a buffer");
-        let oldlen = inner.vec.len();
-        inner.vec.extend(iter);
-        self.len += inner.vec.len() - oldlen;
+        self.extend_unchecked(iter);
     }
 }
 
