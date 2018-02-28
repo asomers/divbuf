@@ -217,6 +217,12 @@ impl Drop for DivBufShared {
     }
 }
 
+impl<'a> From<&'a [u8]> for DivBufShared {
+    fn from(src: &'a [u8]) -> DivBufShared {
+        DivBufShared::from(src.to_vec())
+    }
+}
+
 impl From<Vec<u8>> for DivBufShared {
     fn from(src: Vec<u8>) -> DivBufShared {
         let rc = AtomicUsize::new(0);

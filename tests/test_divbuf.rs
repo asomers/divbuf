@@ -28,6 +28,18 @@ pub fn test_divbufshared_drop_referenced() {
 }
 
 #[test]
+pub fn test_divbufshared_fromslice() {
+    let s = b"abcdefg";
+    let dbs = DivBufShared::from(&s[..]);
+    let mut dbm = dbs.try_mut().unwrap();
+    assert_eq!(dbm, s[..]);
+    // dbs should've been copy constructed, so we can mutate it without changing
+    // the original slice
+    dbm[0] = b'A';
+    assert_ne!(dbm, s[..]);
+}
+
+#[test]
 pub fn test_divbufshared_isempty() {
     assert!(DivBufShared::with_capacity(4096).is_empty());
     assert!(!DivBufShared::from(vec![1, 2, 3]).is_empty());
