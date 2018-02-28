@@ -127,6 +127,12 @@ impl DivBufShared {
         inner.vec.is_empty()
     }
 
+    /// Returns the number of bytes contained in this buffer.
+    pub fn len(&self) -> usize {
+        let inner = unsafe { &*self.inner };
+        inner.vec.len()
+    }
+
     /// Try to create a read-only [`DivBuf`] that refers to the entirety of this
     /// buffer.  Will fail if there are any [`DivBufMut`] objects referring to
     /// this buffer.
@@ -182,12 +188,6 @@ impl DivBufShared {
         } else {
             Err("Cannot create a new DivBufMut when other DivBufs or DivBufMuts are active")
         }
-    }
-
-    /// Returns the number of bytes contained in this buffer.
-    pub fn len(&self) -> usize {
-        let inner = unsafe { &*self.inner };
-        inner.vec.len()
     }
 
     /// Creates a new, empty, `DivBufShared` with a specified capacity.
@@ -474,38 +474,6 @@ impl PartialEq<[u8]> for DivBuf {
 
 
 impl DivBufMut {
-    /// Attempt to extend this `DivBufMut` with bytes from the provided
-    /// iterator.
-    ///
-    /// If this `DivBufMut` is not terminal, that is if it does not extend to
-    /// the end of the `DivBufShared`, then this operation will return an error
-    /// and the buffer will not be modified.  The [`extend`] method from the
-    /// `Extend` Trait, by contrast, will panic under the same condition.
-    ///
-    /// # Examples
-    /// ```
-    /// # use divbuf::*;
-    ///
-    /// let dbs = DivBufShared::with_capacity(64);
-    /// let mut dbm0 = dbs.try_mut().unwrap();
-    /// assert!(dbm0.try_extend([1, 2, 3].iter()).is_ok());
-    /// ```
-    ///
-    /// [`extend`]: #method.extend
-    //TODO optimize by creating a common extend_unchecked method for try_extend
-    //and extend to use.
-    pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), &'static str>
-        where T: IntoIterator<Item=&'a u8> {
-        let inner = unsafe { &*self.inner };
-        let oldlen = inner.vec.len();
-        if self.begin + self.len != oldlen {
-            Err("Can't extend into the middle of a buffer")
-        } else {
-            self.extend(iter);
-            Ok(())
-        }
-    }    
-
     /// Returns true if the `DivBufMut` has length 0
     pub fn is_empty(&self) -> bool {
         self.len == 0
@@ -592,6 +560,38 @@ impl DivBufMut {
         self.begin += at;
         self.len -= at;
         left_half
+    }
+
+    /// Attempt to extend this `DivBufMut` with bytes from the provided
+    /// iterator.
+    ///
+    /// If this `DivBufMut` is not terminal, that is if it does not extend to
+    /// the end of the `DivBufShared`, then this operation will return an error
+    /// and the buffer will not be modified.  The [`extend`] method from the
+    /// `Extend` Trait, by contrast, will panic under the same condition.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    ///
+    /// let dbs = DivBufShared::with_capacity(64);
+    /// let mut dbm0 = dbs.try_mut().unwrap();
+    /// assert!(dbm0.try_extend([1, 2, 3].iter()).is_ok());
+    /// ```
+    ///
+    /// [`extend`]: #method.extend
+    //TODO optimize by creating a common extend_unchecked method for try_extend
+    //and extend to use.
+    pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), &'static str>
+        where T: IntoIterator<Item=&'a u8> {
+        let inner = unsafe { &*self.inner };
+        let oldlen = inner.vec.len();
+        if self.begin + self.len != oldlen {
+            Err("Can't extend into the middle of a buffer")
+        } else {
+            self.extend(iter);
+            Ok(())
+        }
     }
 
     /// Shortens the buffer, keeping the first `len` bytes and dropping the
