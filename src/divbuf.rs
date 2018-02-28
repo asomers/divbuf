@@ -93,7 +93,6 @@ pub struct DivBuf {
 /// # Examples
 /// ```
 /// # use divbuf::*;
-///
 /// let dbs = DivBufShared::from(vec![0; 64]);
 /// let mut dbm = dbs.try_mut().unwrap();
 /// dbm[0..4].copy_from_slice(&b"Blue"[..]);
@@ -140,7 +139,6 @@ impl DivBufShared {
     /// # Examples
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::with_capacity(4096);
     /// let db = dbs.try().unwrap();
     /// ```
@@ -169,7 +167,6 @@ impl DivBufShared {
     /// # Examples
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::with_capacity(4096);
     /// let dbm = dbs.try_mut().unwrap();
     /// ```
@@ -255,7 +252,6 @@ impl DivBuf {
     /// # Examples
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let db0 = dbs.try().unwrap();
     /// let db1 = db0.slice(1, 4);
@@ -280,7 +276,6 @@ impl DivBuf {
     /// # Examples
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let db0 = dbs.try().unwrap();
     /// let db1 = db0.slice_from(3);
@@ -296,7 +291,6 @@ impl DivBuf {
     /// # Examples
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let db0 = dbs.try().unwrap();
     /// let db1 = db0.slice_to(3);
@@ -317,7 +311,6 @@ impl DivBuf {
     ///
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut db0 = dbs.try().unwrap();
     /// let db1 = db0.split_off(4);
@@ -349,7 +342,6 @@ impl DivBuf {
     ///
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut db0 = dbs.try().unwrap();
     /// let db1 = db0.split_to(4);
@@ -380,7 +372,6 @@ impl DivBuf {
     /// # Examples
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::with_capacity(4096);
     /// let db = dbs.try().unwrap();
     /// db.try_mut().unwrap();
@@ -409,7 +400,6 @@ impl DivBuf {
     ///
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut db0 = dbs.try().unwrap();
     /// let db1 = db0.split_off(4);
@@ -533,7 +523,6 @@ impl DivBufMut {
     ///
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut dbm0 = dbs.try_mut().unwrap();
     /// let dbm1 = dbm0.split_off(4);
@@ -565,7 +554,6 @@ impl DivBufMut {
     ///
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut dbm0 = dbs.try_mut().unwrap();
     /// let dbm1 = dbm0.split_to(4);
@@ -599,7 +587,6 @@ impl DivBufMut {
     /// # Examples
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::with_capacity(64);
     /// let mut dbm0 = dbs.try_mut().unwrap();
     /// assert!(dbm0.try_extend([1, 2, 3].iter()).is_ok());
@@ -628,7 +615,6 @@ impl DivBufMut {
     ///
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut dbm0 = dbs.try_mut().unwrap();
     /// assert!(dbm0.try_truncate(3).is_ok());
@@ -656,7 +642,6 @@ impl DivBufMut {
     ///
     /// ```
     /// # use divbuf::*;
-    ///
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut dbm0 = dbs.try_mut().unwrap();
     /// let dbm1 = dbm0.split_off(4);
