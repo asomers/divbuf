@@ -23,6 +23,7 @@ pub struct DivBufShared {
 
 #[derive(Debug)]
 pub struct DivBuf {
+    // inner must be *mut just to support the try_mut method
     inner: *mut Inner,
     // In the future, consider optimizing by replacing begin with a pointer
     begin: usize,
@@ -39,7 +40,7 @@ pub struct DivBufMut {
 
 impl DivBufShared {
     pub fn capacity(&self) -> usize {
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         inner.vec.capacity()
     }
 
@@ -49,11 +50,11 @@ impl DivBufShared {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::with_capacity(64);
+    /// let dbs = DivBufShared::with_capacity(64);
     /// assert!(dbs.is_empty());
     /// ```
     pub fn is_empty(&self) -> bool {
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         inner.vec.is_empty()
     }
 
@@ -65,12 +66,12 @@ impl DivBufShared {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::with_capacity(4096);
+    /// let dbs = DivBufShared::with_capacity(4096);
     /// let db = dbs.try().unwrap();
     /// ```
     ///
-    pub fn try(&mut self) -> Result<DivBuf, &'static str> {
-        let inner = unsafe { &mut *self.inner };
+    pub fn try(&self) -> Result<DivBuf, &'static str> {
+        let inner = unsafe { &*self.inner };
         if inner.refcount.fetch_add(1, Acquire) & WRITER_FLAG != 0 {
             inner.refcount.fetch_sub(1, Relaxed);
             Err("Cannot create a DivBuf when DivBufMuts are active")
@@ -92,11 +93,11 @@ impl DivBufShared {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::with_capacity(4096);
+    /// let dbs = DivBufShared::with_capacity(4096);
     /// let dbm = dbs.try_mut().unwrap();
     /// ```
-    pub fn try_mut(&mut self) -> Result<DivBufMut, &'static str> {
-        let inner = unsafe { &mut *self.inner };
+    pub fn try_mut(&self) -> Result<DivBufMut, &'static str> {
+        let inner = unsafe { &*self.inner };
         if inner.refcount.compare_and_swap(0, WRITER_FLAG + 1, AcqRel) == 0 { 
             let l = inner.vec.len();
             Ok(DivBufMut {
@@ -110,7 +111,7 @@ impl DivBufShared {
     }
 
     pub fn len(&self) -> usize {
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         inner.vec.len()
     }
 
@@ -124,7 +125,7 @@ impl Drop for DivBufShared {
         // if we get here, that means that nobody else has a reference to this
         // DivBufShared.  So we don't have to worry that somebody else will
         // reference self.inner while we're Drop'ing it.
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         if inner.refcount.load(Relaxed) == 0 { 
             unsafe {
                 Box::from_raw(self.inner);
@@ -157,7 +158,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::with_capacity(64);
+    /// let dbs = DivBufShared::with_capacity(64);
     /// let db0 = dbs.try().unwrap();
     /// assert!(db0.is_empty());
     /// ```
@@ -174,7 +175,7 @@ impl DivBuf {
     pub fn slice(&self, begin: usize, end: usize) -> DivBuf {
         assert!(begin <= end);
         assert!(end <= self.len);
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         let old_refcount = inner.refcount.fetch_add(1, Acquire);
         debug_assert_eq!(old_refcount & WRITER_FLAG, 0);
         debug_assert!(old_refcount & !WRITER_FLAG > 0);
@@ -205,7 +206,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut db0 = dbs.try().unwrap();
     /// let db1 = db0.split_off(4);
     /// assert_eq!(db0, [1, 2, 3, 4][..]);
@@ -213,7 +214,7 @@ impl DivBuf {
     /// ```
     pub fn split_off(&mut self, at: usize) -> DivBuf {
         assert!(at <= self.len, "Can't split past the end");
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         let old_refcount = inner.refcount.fetch_add(1, Relaxed);
         debug_assert_eq!(old_refcount & WRITER_FLAG, 0);
         debug_assert!(old_refcount & !WRITER_FLAG > 0);
@@ -237,7 +238,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut db0 = dbs.try().unwrap();
     /// let db1 = db0.split_to(4);
     /// assert_eq!(db0, [5, 6][..]);
@@ -245,7 +246,7 @@ impl DivBuf {
     /// ```
     pub fn split_to(&mut self, at: usize) -> DivBuf {
         assert!(at <= self.len, "Can't split past the end");
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         let old_refcount = inner.refcount.fetch_add(1, Relaxed);
         debug_assert_eq!(old_refcount & WRITER_FLAG, 0);
         debug_assert!(old_refcount & !WRITER_FLAG > 0);
@@ -268,12 +269,12 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::with_capacity(4096);
+    /// let dbs = DivBufShared::with_capacity(4096);
     /// let db = dbs.try().unwrap();
     /// db.try_mut().unwrap();
     /// ```
     pub fn try_mut(self) -> Result<DivBufMut, DivBuf> {
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         if inner.refcount.compare_and_swap(1, WRITER_FLAG + 1, AcqRel) == 1 {
             let mutable_self = Ok(DivBufMut {
                 inner: self.inner,
@@ -297,7 +298,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut db0 = dbs.try().unwrap();
     /// let db1 = db0.split_off(4);
     /// db0.unsplit(db1);
@@ -316,7 +317,7 @@ impl DivBuf {
 impl AsRef<[u8]> for DivBuf {
     fn as_ref(&self) -> &[u8] {
         unsafe {
-            let inner = &mut *self.inner;
+            let inner = &*self.inner;
             slice::from_raw_parts(&inner.vec[self.begin] as *const u8, self.len)
         }
     }
@@ -337,13 +338,13 @@ impl ops::Deref for DivBuf {
     /// # Examples
     /// ```compile_fail
     /// # use divbuf::*;
-    /// let mut dbs = DivBufShared::from(vec![1, 2, 3]);
+    /// let dbs = DivBufShared::from(vec![1, 2, 3]);
     /// let db = dbs.try().unwrap();
     /// db[0] = 9;
     /// ```
     fn deref(&self) -> &[u8] {
         unsafe {
-            let inner = &mut *self.inner;
+            let inner = &*self.inner;
             slice::from_raw_parts(&inner.vec[self.begin] as *const u8, self.len)
         }
     }
@@ -357,7 +358,7 @@ impl Clone for DivBuf {
 
 impl Drop for DivBuf {
     fn drop(&mut self) {
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         inner.refcount.fetch_sub(1, Release);
     }
 }
@@ -378,7 +379,7 @@ impl PartialEq<[u8]> for DivBuf {
 impl DivBufMut {
     pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), &'static str>
         where T: IntoIterator<Item=&'a u8> {
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         let oldlen = inner.vec.len();
         if self.begin + self.len != oldlen {
             Err("Can't extend into the middle of a buffer")
@@ -394,7 +395,7 @@ impl DivBufMut {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::with_capacity(64);
+    /// let dbs = DivBufShared::with_capacity(64);
     /// let dbm0 = dbs.try_mut().unwrap();
     /// assert!(dbm0.is_empty());
     /// ```
@@ -423,7 +424,7 @@ impl DivBufMut {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut dbm0 = dbs.try_mut().unwrap();
     /// let dbm1 = dbm0.split_off(4);
     /// assert_eq!(dbm0, [1, 2, 3, 4][..]);
@@ -431,7 +432,7 @@ impl DivBufMut {
     /// ```
     pub fn split_off(&mut self, at: usize) -> DivBufMut {
         assert!(at <= self.len, "Can't split past the end");
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         let old_refcount = inner.refcount.fetch_add(1, Relaxed);
         debug_assert_eq!(old_refcount & WRITER_FLAG, WRITER_FLAG);
         debug_assert!(old_refcount & !WRITER_FLAG > 0);
@@ -455,7 +456,7 @@ impl DivBufMut {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut dbm0 = dbs.try_mut().unwrap();
     /// let dbm1 = dbm0.split_to(4);
     /// assert_eq!(dbm0, [5, 6][..]);
@@ -463,7 +464,7 @@ impl DivBufMut {
     /// ```
     pub fn split_to(&mut self, at: usize) -> DivBufMut {
         assert!(at <= self.len, "Can't split past the end");
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         let old_refcount = inner.refcount.fetch_add(1, Relaxed);
         debug_assert_eq!(old_refcount & WRITER_FLAG, WRITER_FLAG);
         debug_assert!(old_refcount & !WRITER_FLAG > 0);
@@ -491,7 +492,7 @@ impl DivBufMut {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut dbm0 = dbs.try_mut().unwrap();
     /// assert!(dbm0.try_truncate(3).is_ok());
     /// assert_eq!(dbm0, [1, 2, 3][..]);
@@ -517,7 +518,7 @@ impl DivBufMut {
     /// ```
     /// # use divbuf::*;
     ///
-    /// let mut dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     /// let mut dbm0 = dbs.try_mut().unwrap();
     /// let dbm1 = dbm0.split_off(4);
     /// dbm0.unsplit(dbm1);
@@ -536,7 +537,7 @@ impl DivBufMut {
 impl AsRef<[u8]> for DivBufMut {
     fn as_ref(&self) -> &[u8] {
         unsafe {
-            let inner = &mut *self.inner;
+            let inner = &*self.inner;
             slice::from_raw_parts(&inner.vec[self.begin] as *const u8, self.len)
         }
     }
@@ -547,7 +548,7 @@ impl ops::Deref for DivBufMut {
 
     fn deref(&self) -> &[u8] {
         unsafe {
-            let inner = &mut *self.inner;
+            let inner = &*self.inner;
             slice::from_raw_parts(&inner.vec[self.begin] as *const u8, self.len)
         }
     }
@@ -564,7 +565,7 @@ impl ops::DerefMut for DivBufMut {
 
 impl Drop for DivBufMut {
     fn drop(&mut self) {
-        let inner = unsafe { &mut *self.inner };
+        let inner = unsafe { &*self.inner };
         // if we get here, we know that:
         // * nobody else has a reference to this DivBufMut
         // * There are no living DivBufs for this buffer
@@ -619,5 +620,3 @@ impl PartialEq<[u8]> for DivBufMut {
         self.as_ref() == other
     }
 }
-
-
