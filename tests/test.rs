@@ -28,6 +28,12 @@ pub fn test_divbufshared_drop_referenced() {
 }
 
 #[test]
+pub fn test_divbufshared_isempty() {
+    assert!(DivBufShared::with_capacity(4096).is_empty());
+    assert!(!DivBufShared::from(vec![1, 2, 3]).is_empty());
+}
+
+#[test]
 pub fn test_divbufshared_try() {
     let mut dbs = DivBufShared::with_capacity(4096);
     // Create an initial DivBuf
