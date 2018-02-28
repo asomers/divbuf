@@ -355,6 +355,16 @@ pub fn test_divbufmut_reserve() {
 }
 
 #[test]
+#[should_panic(expected = "reserve from the middle of a buffer")]
+pub fn test_divbufmut_reserve_from_the_middle() {
+    let v = vec![1, 2, 3, 4, 5, 6];
+    let dbs = DivBufShared::from(v);
+    let mut dbm = dbs.try_mut().unwrap();
+    let mut left_half = dbm.split_to(3);
+    left_half.reserve(128);
+}
+
+#[test]
 pub fn test_divbufmut_split_off() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     let mut dbm0 = dbs.try_mut().unwrap();

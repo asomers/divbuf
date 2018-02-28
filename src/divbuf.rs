@@ -479,6 +479,13 @@ impl DivBufMut {
         self.len == 0
     }
 
+    /// Returns true if the `DivBufMut` extends to the end of the `DivBufShared`
+    fn is_terminal(&self) -> bool {
+        let inner = unsafe { &*self.inner };
+        let oldlen = inner.vec.len();
+        self.begin + self.len == oldlen
+    }
+
     /// Get the length of this `DivBuf`, _not_ the underlying storage
     pub fn len(&self) -> usize {
         self.len
@@ -493,6 +500,10 @@ impl DivBufMut {
     /// [`extend`]: #method.extend
     pub fn reserve(&mut self, additional: usize) {
         let inner = unsafe { &mut *self.inner };
+        // panic if this DivBufMut does not extend to the end of the
+        // DivBufShared
+        assert!(self.is_terminal(),
+            "Can't reserve from the middle of a buffer");
         inner.vec.reserve(additional)
     }
 
@@ -584,13 +595,11 @@ impl DivBufMut {
     //and extend to use.
     pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), &'static str>
         where T: IntoIterator<Item=&'a u8> {
-        let inner = unsafe { &*self.inner };
-        let oldlen = inner.vec.len();
-        if self.begin + self.len != oldlen {
-            Err("Can't extend into the middle of a buffer")
-        } else {
+        if self.is_terminal() {
             self.extend(iter);
             Ok(())
+        } else {
+            Err("Can't extend into the middle of a buffer")
         }
     }
 
@@ -711,9 +720,8 @@ impl<'a> Extend<&'a u8> for DivBufMut {
         let inner = unsafe { &mut *self.inner };
         // panic if this DivBufMut does not extend to the end of the
         // DivBufShared
+        assert!(self.is_terminal(), "Can't extend into the middle of a buffer");
         let oldlen = inner.vec.len();
-        assert_eq!(self.begin + self.len, oldlen,
-            "Can't extend into the middle of a buffer");
         inner.vec.extend(iter);
         self.len += inner.vec.len() - oldlen;
     }
