@@ -48,7 +48,7 @@ pub fn test_divbufshared_try_after_trymut() {
     // Create an initial DivBufMut
     let _dbm = dbs.try_mut().unwrap();
     // Creating a DivBuf should fail, because there are writers
-    assert!(dbs.try().is_none());
+    assert!(dbs.try().is_err());
 }
 
 #[test]
@@ -57,7 +57,7 @@ pub fn test_divbufshared_try_mut() {
     // Create an initial DivBufMut
     let _dbm0 = dbs.try_mut().unwrap();
     // Creating a second is not allowed
-    assert!(dbs.try_mut().is_none());
+    assert!(dbs.try_mut().is_err());
 }
 
 //

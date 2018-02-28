@@ -69,14 +69,14 @@ impl DivBufShared {
     /// let db = dbs.try().unwrap();
     /// ```
     ///
-    pub fn try(&mut self) -> Option<DivBuf> {
+    pub fn try(&mut self) -> Result<DivBuf, &'static str> {
         let inner = unsafe { &mut *self.inner };
-        if inner.refcount.fetch_add(1, Acquire) & WRITER_FLAG != 0{
+        if inner.refcount.fetch_add(1, Acquire) & WRITER_FLAG != 0 {
             inner.refcount.fetch_sub(1, Relaxed);
-            None
+            Err("Cannot create a DivBuf when DivBufMuts are active")
         } else {
             let l = inner.vec.len();
-            Some(DivBuf {
+            Ok(DivBuf {
                 inner: self.inner,
                 begin: 0,
                 len: l
@@ -95,17 +95,17 @@ impl DivBufShared {
     /// let mut dbs = DivBufShared::with_capacity(4096);
     /// let dbm = dbs.try_mut().unwrap();
     /// ```
-    pub fn try_mut(&mut self) -> Option<DivBufMut> {
+    pub fn try_mut(&mut self) -> Result<DivBufMut, &'static str> {
         let inner = unsafe { &mut *self.inner };
         if inner.refcount.compare_and_swap(0, WRITER_FLAG + 1, AcqRel) == 0 { 
             let l = inner.vec.len();
-            Some(DivBufMut {
+            Ok(DivBufMut {
                 inner: self.inner,
                 begin: 0,
                 len: l
             })
         } else {
-            None
+            Err("Cannot create a new DivBufMut when other DivBufs or DivBufMuts are active")
         }
     }
 
