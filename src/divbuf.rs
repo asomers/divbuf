@@ -19,11 +19,52 @@ struct Inner {
     refcount: AtomicUsize,
 }
 
+/// The "entry point" to the `divbuf` crate.
+///
+/// A `DivBufShared` owns storage, but cannot directly access it.  An
+/// application will typically create an instance of this class for every
+/// independent buffer it wants to manage, and then create child `DivBuf`s or
+/// `DivBufMut`s to access the storage.
 #[derive(Debug)]
 pub struct DivBufShared {
     inner: *mut Inner,
 }
 
+/// Provides read-only access to a buffer.
+///
+/// This struct provides a window into a region of a `DivBufShared`, allowing
+/// read-only access.  It can be divided into smaller `DivBuf` using the
+/// [`split_to`], [`split_off`], [`slice`], [`slice_from`], and [`slice_to`]
+/// methods.  Adjacent `DivBuf`s can be combined using the [`unsplit`] method.
+/// Finally, a `DivBuf` can be upgraded to a writable [`DivBufMut`] using the
+/// [`try_mut`] method, but only if there are no other `DivBuf`s that reference
+/// the same `DivBufShared`.
+///
+/// # Examples
+/// ```
+/// # use divbuf::*;
+/// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+/// let mut db0 : DivBuf = dbs.try().unwrap();
+/// assert_eq!(db0, [1, 2, 3, 4, 5, 6][..]);
+/// ```
+///
+/// Unlike [`DivBufMut`], a `DivBuf` cannot be used to modify the buffer.  The
+/// following example will fail.
+/// ```compile_fail
+/// # use divbuf::*;
+/// let dbs = DivBufShared::from(vec![1, 2, 3]);
+/// let mut db = dbs.try().unwrap();
+/// db[0] = 9;
+/// ```
+///
+/// [`DivBufMut`]: struct.DivBufMut.html
+/// [`slice_from`]: #method.slice_from
+/// [`slice_to`]: #method.slice_to
+/// [`slice`]: #method.slice
+/// [`split_off`]: #method.split_off
+/// [`split_to`]: #method.split_to
+/// [`try_mut`]: #method.try_mut
+/// [`unsplit`]: #method.unsplit
 #[derive(Debug)]
 pub struct DivBuf {
     // inner must be *mut just to support the try_mut method
@@ -33,6 +74,38 @@ pub struct DivBuf {
     len: usize,
 }
 
+/// Provides read-write access to a buffer
+///
+/// This structure provides a window into a region of a `DivBufShared`, allowing
+/// read-write access.  It can be divided into smaller `DivBufMut` using the
+/// [`split_to`], and [`split_off`] methods.  Adjacent `DivBufMut`s can be
+/// combined using the [`unsplit`] method.  `DivBufMut` dereferences to a
+/// `&[u8]`, which is usually the easiest way to access its contents.  However,
+/// it can also be modified using the `Vec`-like methods [`extend`],
+/// [`try_extend`], [`reserve`], and [`try_truncate`].  Crucially, those methods
+/// will only work for terminal `DivBufMut`s.  That is, a `DivBufMut` whose
+/// range includes the end of the `DivBufShared`'s buffer.
+///
+/// `divbuf` includes a primitive form of range-locking.  It's possible to have
+/// multiple `DivBufMut`s simultaneously referencing a single `DivBufShared`,
+/// but there's no way to create overlapping `DivBufMut`s.
+///
+/// # Examples
+/// ```
+/// # use divbuf::*;
+///
+/// let dbs = DivBufShared::from(vec![0; 64]);
+/// let mut dbm = dbs.try_mut().unwrap();
+/// dbm[0..4].copy_from_slice(&b"Blue"[..]);
+/// ```
+///
+/// [`split_off`]: #method.split_off
+/// [`split_to`]: #method.split_to
+/// [`unsplit`]: #method.unsplit
+/// [`extend`]: #method.extend
+/// [`try_extend`]: #method.try_extend
+/// [`reserve`]: #method.reserve
+/// [`try_truncate`]: #method.try_truncate
 #[derive(Debug)]
 pub struct DivBufMut {
     inner: *mut Inner,
@@ -42,27 +115,20 @@ pub struct DivBufMut {
 }
 
 impl DivBufShared {
+    /// Returns the number of bytes the buffer can hold without reallocating.
     pub fn capacity(&self) -> usize {
         let inner = unsafe { &*self.inner };
         inner.vec.capacity()
     }
 
     /// Returns true if the `DivBufShared` has length 0
-    ///
-    /// # Examples
-    /// ```
-    /// # use divbuf::*;
-    ///
-    /// let dbs = DivBufShared::with_capacity(64);
-    /// assert!(dbs.is_empty());
-    /// ```
     pub fn is_empty(&self) -> bool {
         let inner = unsafe { &*self.inner };
         inner.vec.is_empty()
     }
 
-    /// Try to create a read-only `DivBuf` that refers to the entirety of this
-    /// buffer.  Will fail if there are any `DivBufMut` objects referring to
+    /// Try to create a read-only [`DivBuf`] that refers to the entirety of this
+    /// buffer.  Will fail if there are any [`DivBufMut`] objects referring to
     /// this buffer.
     ///
     /// # Examples
@@ -73,6 +139,8 @@ impl DivBufShared {
     /// let db = dbs.try().unwrap();
     /// ```
     ///
+    /// [`DivBuf`]: struct.DivBuf.html
+    /// [`DivBufMut`]: struct.DivBufMut.html
     pub fn try(&self) -> Result<DivBuf, &'static str> {
         let inner = unsafe { &*self.inner };
         if inner.refcount.fetch_add(1, Acquire) & WRITER_FLAG != 0 {
@@ -89,7 +157,7 @@ impl DivBufShared {
     }
 
     /// Try to create a mutable `DivBufMt` that refers to the entirety of this
-    /// buffer.  Will fail if there are any `DivBufMut` or `DivBuf` objects
+    /// buffer.  Will fail if there are any [`DivBufMut`] or [`DivBuf`] objects
     /// referring to this buffer.
     ///
     /// # Examples
@@ -99,6 +167,9 @@ impl DivBufShared {
     /// let dbs = DivBufShared::with_capacity(4096);
     /// let dbm = dbs.try_mut().unwrap();
     /// ```
+    ///
+    /// [`DivBuf`]: struct.DivBuf.html
+    /// [`DivBufMut`]: struct.DivBufMut.html
     pub fn try_mut(&self) -> Result<DivBufMut, &'static str> {
         let inner = unsafe { &*self.inner };
         if inner.refcount.compare_and_swap(0, WRITER_FLAG + 1, AcqRel) == 0 { 
@@ -113,11 +184,16 @@ impl DivBufShared {
         }
     }
 
+    /// Returns the number of bytes contained in this buffer.
     pub fn len(&self) -> usize {
         let inner = unsafe { &*self.inner };
         inner.vec.len()
     }
 
+    /// Creates a new, empty, `DivBufShared` with a specified capacity.
+    ///
+    /// After constructing a `DivBufShared` this way, it can only be populated
+    /// via a child `DivBufMut`.
     pub fn with_capacity(capacity: usize) -> Self {
         Self::from(Vec::with_capacity(capacity))
     }
@@ -159,15 +235,6 @@ unsafe impl Sync for DivBufShared {
 
 impl DivBuf {
     /// Returns true if the `DivBuf` has length 0
-    ///
-    /// # Examples
-    /// ```
-    /// # use divbuf::*;
-    ///
-    /// let dbs = DivBufShared::with_capacity(64);
-    /// let db0 = dbs.try().unwrap();
-    /// assert!(db0.is_empty());
-    /// ```
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
@@ -178,6 +245,16 @@ impl DivBuf {
     }
 
     /// Create a new DivBuf that spans a subset of this one.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    ///
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let db0 = dbs.try().unwrap();
+    /// let db1 = db0.slice(1, 4);
+    /// assert_eq!(db1, [2, 3, 4][..]);
+    /// ```
     pub fn slice(&self, begin: usize, end: usize) -> DivBuf {
         assert!(begin <= end);
         assert!(end <= self.len);
@@ -192,18 +269,41 @@ impl DivBuf {
         }
     }    
 
+    /// Creates a new DivBuf that spans a subset of this one, including the end
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    ///
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let db0 = dbs.try().unwrap();
+    /// let db1 = db0.slice_from(3);
+    /// assert_eq!(db1, [4, 5, 6][..]);
+    /// ```
     pub fn slice_from(&self, begin: usize) -> DivBuf {
         self.slice(begin, self.len())
     }
     
+    /// Creates a new DivBuf that spans a subset of self, including the
+    /// beginning
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    ///
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let db0 = dbs.try().unwrap();
+    /// let db1 = db0.slice_to(3);
+    /// assert_eq!(db1, [1, 2, 3][..]);
+    /// ```
     pub fn slice_to(&self, end: usize) -> DivBuf {
         self.slice(0, end)
     }
 
     /// Splits the DivBuf into two at the given index.
     ///
-    /// Afterwards self contains elements [0, at), and the returned DivBuf
-    /// contains elements [at, self.len).
+    /// Afterwards self contains elements `[0, at)`, and the returned DivBuf
+    /// contains elements `[at, self.len)`.
     ///
     /// This is an O(1) operation
     ///
@@ -235,8 +335,8 @@ impl DivBuf {
 
     /// Splits the DivBuf into two at the given index.
     ///
-    /// Afterwards self contains elements [at, self.len), and the returned
-    /// DivBuf contains elements [0, at).
+    /// Afterwards self contains elements `[at, self.len)`, and the returned
+    /// DivBuf contains elements `[0, at)`.
     /// This is an O(1) operation.
     ///
     /// # Examples
@@ -339,15 +439,6 @@ impl hash::Hash for DivBuf {
 impl ops::Deref for DivBuf {
     type Target = [u8];
 
-    /// TODO: move this doc test to the class or module level
-    ///
-    /// # Examples
-    /// ```compile_fail
-    /// # use divbuf::*;
-    /// let dbs = DivBufShared::from(vec![1, 2, 3]);
-    /// let db = dbs.try().unwrap();
-    /// db[0] = 9;
-    /// ```
     fn deref(&self) -> &[u8] {
         unsafe {
             let inner = &*self.inner;
@@ -383,6 +474,26 @@ impl PartialEq<[u8]> for DivBuf {
 
 
 impl DivBufMut {
+    /// Attempt to extend this `DivBufMut` with bytes from the provided
+    /// iterator.
+    ///
+    /// If this `DivBufMut` is not terminal, that is if it does not extend to
+    /// the end of the `DivBufShared`, then this operation will return an error
+    /// and the buffer will not be modified.  The [`extend`] method from the
+    /// `Extend` Trait, by contrast, will panic under the same condition.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    ///
+    /// let dbs = DivBufShared::with_capacity(64);
+    /// let mut dbm0 = dbs.try_mut().unwrap();
+    /// assert!(dbm0.try_extend([1, 2, 3].iter()).is_ok());
+    /// ```
+    ///
+    /// [`extend`]: #method.extend
+    //TODO optimize by creating a common extend_unchecked method for try_extend
+    //and extend to use.
     pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), &'static str>
         where T: IntoIterator<Item=&'a u8> {
         let inner = unsafe { &*self.inner };
@@ -396,23 +507,22 @@ impl DivBufMut {
     }    
 
     /// Returns true if the `DivBufMut` has length 0
-    ///
-    /// # Examples
-    /// ```
-    /// # use divbuf::*;
-    ///
-    /// let dbs = DivBufShared::with_capacity(64);
-    /// let dbm0 = dbs.try_mut().unwrap();
-    /// assert!(dbm0.is_empty());
-    /// ```
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
+    /// Get the length of this `DivBuf`, _not_ the underlying storage
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// Reserves capacity for at least `additional` more bytes to be inserted
+    /// into the buffer.
+    ///
+    /// Like [`extend`], this method will panic if the `DivBufMut` is
+    /// non-terminal.
+    ///
+    /// [`extend`]: #method.extend
     pub fn reserve(&mut self, additional: usize) {
         let inner = unsafe { &mut *self.inner };
         inner.vec.reserve(additional)
@@ -420,8 +530,8 @@ impl DivBufMut {
 
     /// Splits the DivBufMut into two at the given index.
     ///
-    /// Afterwards self contains elements [0, at), and the returned DivBufMut
-    /// contains elements [at, self.len).
+    /// Afterwards self contains elements `[0, at)`, and the returned DivBufMut
+    /// contains elements `[at, self.len)`.
     ///
     /// This is an O(1) operation
     ///
@@ -453,8 +563,8 @@ impl DivBufMut {
 
     /// Splits the DivBufMut into two at the given index.
     ///
-    /// Afterwards self contains elements [at, self.len), and the returned
-    /// DivBufMut contains elements [0, at).
+    /// Afterwards self contains elements `[at, self.len)`, and the returned
+    /// DivBufMut contains elements `[0, at)`.
     /// This is an O(1) operation.
     ///
     /// # Examples
@@ -490,8 +600,7 @@ impl DivBufMut {
     /// If `len` is greater than the buffer's current length, this has no
     /// effect.
     ///
-    /// Will fail if this DivButMut does not include the end of the shared
-    /// vector.
+    /// Like [`try_extend`], will fail if this DivButMut is non-terminal.
     ///
     /// # Examples
     ///
@@ -503,6 +612,8 @@ impl DivBufMut {
     /// assert!(dbm0.try_truncate(3).is_ok());
     /// assert_eq!(dbm0, [1, 2, 3][..]);
     /// ```
+    ///
+    /// [`try_extend`]: #method.try_extend
     pub fn try_truncate(&mut self, len: usize) -> Result<(), &'static str> {
         let inner = unsafe { &mut *self.inner };
         if self.begin + self.len != inner.vec.len() {
