@@ -1,8 +1,7 @@
 // vim: tw=80
-#![allow(unused)]
 
-use std::{cmp, hash, mem, ops, ptr, slice};
-use std::sync::atomic::{AtomicBool, AtomicUsize};
+use std::{cmp, hash, mem, ops, slice};
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
 
 
@@ -137,7 +136,7 @@ impl Drop for DivBufShared {
 impl From<Vec<u8>> for DivBufShared {
     fn from(src: Vec<u8>) -> DivBufShared {
         let rc = AtomicUsize::new(0);
-        let mut inner = Box::new(Inner {
+        let inner = Box::new(Inner {
             vec: src,
             refcount: rc
         });
@@ -276,7 +275,7 @@ impl DivBuf {
     /// let db = dbs.try().unwrap();
     /// db.try_mut().unwrap();
     /// ```
-    pub fn try_mut(mut self) -> Result<DivBufMut, DivBuf> {
+    pub fn try_mut(self) -> Result<DivBufMut, DivBuf> {
         let inner = unsafe {
             &mut *self.inner
         };
