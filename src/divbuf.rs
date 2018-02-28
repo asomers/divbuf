@@ -154,6 +154,9 @@ impl From<Vec<u8>> for DivBufShared {
     }
 }
 
+unsafe impl Sync for DivBufShared {
+}
+
 impl DivBuf {
     /// Returns true if the `DivBuf` has length 0
     ///
