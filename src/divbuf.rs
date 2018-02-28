@@ -5,7 +5,10 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
 
 
+#[cfg(feature = "const_fn")]
 const WRITER_FLAG: usize = isize::min_value() as usize;
+#[cfg(not(feature = "const_fn"))]
+const WRITER_FLAG: usize = 0x80000000;
 
 #[derive(Debug)]
 struct Inner {
