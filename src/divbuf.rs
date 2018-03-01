@@ -4,18 +4,21 @@ use std::{cmp, hash, mem, ops, slice};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
 
-
-#[cfg(feature = "const_fn")]
-const WRITER_FLAG: usize = isize::min_value() as usize;
-#[cfg(not(feature = "const_fn"))]
-const WRITER_FLAG: usize = 0x8000_0000;
+#[cfg(target_pointer_width = "64")]
+const WRITER_SHIFT: usize = 32;
+#[cfg(target_pointer_width = "64")]
+const READER_MASK: usize = 0xFFFF_FFFF;
+#[cfg(target_pointer_width = "32")]
+const WRITER_SHIFT: usize = 16;
+#[cfg(target_pointer_width = "32")]
+const READER_MASK: usize = 0xFFFF;
+const ONE_WRITER : usize = 1 << WRITER_SHIFT;
 
 #[derive(Debug)]
 struct Inner {
     vec: Vec<u8>,
-    /// Stores the number of references, _and_ whether those references are
-    /// writers or readers.  If the high bit is set, then the buffer is open in
-    /// writing mode.  Otherwise, it's open in reading mode or not open at all.
+    /// Stores the number of readers in the low half, and writers in the high
+    /// half.
     refcount: AtomicUsize,
 }
 
@@ -147,7 +150,7 @@ impl DivBufShared {
     /// [`DivBufMut`]: struct.DivBufMut.html
     pub fn try(&self) -> Result<DivBuf, &'static str> {
         let inner = unsafe { &*self.inner };
-        if inner.refcount.fetch_add(1, Acquire) & WRITER_FLAG != 0 {
+        if inner.refcount.fetch_add(1, Acquire) >> WRITER_SHIFT != 0 {
             inner.refcount.fetch_sub(1, Relaxed);
             Err("Cannot create a DivBuf when DivBufMuts are active")
         } else {
@@ -175,7 +178,7 @@ impl DivBufShared {
     /// [`DivBufMut`]: struct.DivBufMut.html
     pub fn try_mut(&self) -> Result<DivBufMut, &'static str> {
         let inner = unsafe { &*self.inner };
-        if inner.refcount.compare_and_swap(0, WRITER_FLAG + 1, AcqRel) == 0 { 
+        if inner.refcount.compare_and_swap(0, ONE_WRITER, AcqRel) == 0 {
             let l = inner.vec.len();
             Ok(DivBufMut {
                 inner: self.inner,
@@ -262,8 +265,7 @@ impl DivBuf {
         assert!(end <= self.len);
         let inner = unsafe { &*self.inner };
         let old_refcount = inner.refcount.fetch_add(1, Relaxed);
-        debug_assert_eq!(old_refcount & WRITER_FLAG, 0);
-        debug_assert!(old_refcount & !WRITER_FLAG > 0);
+        debug_assert!(old_refcount & READER_MASK > 0);
         DivBuf {
             inner: self.inner,
             begin: self.begin + begin,
@@ -321,8 +323,7 @@ impl DivBuf {
         assert!(at <= self.len, "Can't split past the end");
         let inner = unsafe { &*self.inner };
         let old_refcount = inner.refcount.fetch_add(1, Relaxed);
-        debug_assert_eq!(old_refcount & WRITER_FLAG, 0);
-        debug_assert!(old_refcount & !WRITER_FLAG > 0);
+        debug_assert!(old_refcount & READER_MASK > 0);
         let right_half = DivBuf {
             inner: self.inner,
             begin: self.begin + at,
@@ -352,8 +353,7 @@ impl DivBuf {
         assert!(at <= self.len, "Can't split past the end");
         let inner = unsafe { &*self.inner };
         let old_refcount = inner.refcount.fetch_add(1, Relaxed);
-        debug_assert_eq!(old_refcount & WRITER_FLAG, 0);
-        debug_assert!(old_refcount & !WRITER_FLAG > 0);
+        debug_assert!(old_refcount & READER_MASK > 0);
         let left_half = DivBuf {
             inner: self.inner,
             begin: self.begin,
@@ -378,7 +378,7 @@ impl DivBuf {
     /// ```
     pub fn try_mut(self) -> Result<DivBufMut, DivBuf> {
         let inner = unsafe { &*self.inner };
-        if inner.refcount.compare_and_swap(1, WRITER_FLAG + 1, AcqRel) == 1 {
+        if inner.refcount.compare_and_swap(1, ONE_WRITER, AcqRel) == 1 {
             let mutable_self = Ok(DivBufMut {
                 inner: self.inner,
                 begin: self.begin,
@@ -532,9 +532,8 @@ impl DivBufMut {
     pub fn split_off(&mut self, at: usize) -> DivBufMut {
         assert!(at <= self.len, "Can't split past the end");
         let inner = unsafe { &*self.inner };
-        let old_refcount = inner.refcount.fetch_add(1, Relaxed);
-        debug_assert_eq!(old_refcount & WRITER_FLAG, WRITER_FLAG);
-        debug_assert!(old_refcount & !WRITER_FLAG > 0);
+        let old_refcount = inner.refcount.fetch_add(ONE_WRITER, Relaxed);
+        debug_assert!(old_refcount >> WRITER_SHIFT > 0);
         let right_half = DivBufMut {
             inner: self.inner,
             begin: self.begin + at,
@@ -563,9 +562,8 @@ impl DivBufMut {
     pub fn split_to(&mut self, at: usize) -> DivBufMut {
         assert!(at <= self.len, "Can't split past the end");
         let inner = unsafe { &*self.inner };
-        let old_refcount = inner.refcount.fetch_add(1, Relaxed);
-        debug_assert_eq!(old_refcount & WRITER_FLAG, WRITER_FLAG);
-        debug_assert!(old_refcount & !WRITER_FLAG > 0);
+        let old_refcount = inner.refcount.fetch_add(ONE_WRITER, Relaxed);
+        debug_assert!(old_refcount >> WRITER_SHIFT > 0);
         let left_half = DivBufMut {
             inner: self.inner,
             begin: self.begin,
@@ -692,23 +690,7 @@ impl Drop for DivBufMut {
         let inner = unsafe { &*self.inner };
         // if we get here, we know that:
         // * nobody else has a reference to this DivBufMut
-        // * There are no living DivBufs for this buffer
-        if inner.refcount.fetch_sub(1, Relaxed) != WRITER_FLAG + 1 {
-            // if we get here, we know that there are other DivBufMuts for this
-            // buffer.  Don't clear the flag.
-        } else {
-            // if we get here, we know that there are no other DivBufMuts for
-            // this buffer.  We must clear the flag.  We're safe against races
-            // versus:
-            // * DivBufShared::try_mut: that function will harmlessly fail sine
-            //      WRITER_FLAG is still set.
-            // * DivBufMut::drop: cannot be called since there are no other
-            //      DivBufMuts for this buffer
-            // * DivBufShared::try: that function may increase the refcount
-            //      briefly, but it's ok because the two fetch_sub operations
-            //      are commutative
-            inner.refcount.fetch_sub(WRITER_FLAG, Release);
-        }
+        inner.refcount.fetch_sub(ONE_WRITER, Release);
     }
 }
 
