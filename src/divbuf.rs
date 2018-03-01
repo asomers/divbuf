@@ -456,6 +456,12 @@ impl Drop for DivBuf {
     }
 }
 
+impl From<DivBufMut> for DivBuf {
+    fn from(src: DivBufMut) -> DivBuf {
+        src.freeze()
+    }
+}
+
 impl PartialEq for DivBuf {
     fn eq(&self, other: &DivBuf) -> bool {
         self.as_ref() == other.as_ref()
@@ -477,6 +483,34 @@ impl DivBufMut {
         let oldlen = inner.vec.len();
         inner.vec.extend(iter);
         self.len += inner.vec.len() - oldlen;
+    }
+
+    /// Downgrade this `DivBufMut` into a read-only `DivBuf`
+    ///
+    /// Note that this method will always succeed, but subsequently calling
+    /// [`try_mut`] on the returned `DivBuf` may not.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let dbm0 = dbs.try_mut().unwrap();
+    /// let db : DivBuf = dbm0.freeze();
+    /// ```
+    ///
+    /// [`try_mut`]: struct.DivBuf.html#method.try_mut
+    pub fn freeze(self) -> DivBuf {
+        // Construct a new DivBuf, then drop self.  We know that there are no
+        // other DivButMuts that overlap with this one, so it's safe to create a
+        // DivBuf whose range is restricted to what self covers
+        let inner = unsafe { &*self.inner };
+        let old_refcount = inner.refcount.fetch_add(1, Relaxed);
+        debug_assert!(old_refcount >> WRITER_SHIFT > 0);
+        DivBuf {
+            inner: self.inner,
+            begin: self.begin,
+            len: self.len
+        }
     }
 
     /// Returns true if the `DivBufMut` has length 0

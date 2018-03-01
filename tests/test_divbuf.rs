@@ -107,6 +107,13 @@ pub fn test_divbuf_eq() {
 }
 
 #[test]
+pub fn test_divbuf_from_divbufmut() {
+    let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    let dbm = dbs.try_mut().unwrap();
+    let _db = DivBuf::from(dbm);
+}
+
+#[test]
 pub fn test_divbuf_is_empty() {
     let dbs0 = DivBufShared::with_capacity(64);
     let db0 = dbs0.try().unwrap();
@@ -336,6 +343,26 @@ pub fn test_divbufmut_extend_from_the_middle() {
     let mut dbm = dbs.try_mut().unwrap();
     let mut dbm_begin = dbm.split_to(3);
     dbm_begin.extend([7, 8, 9].iter());
+}
+
+#[test]
+pub fn test_divbufmut_freeze() {
+    let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6, 7, 8]);
+    {
+        // Simplest case: freeze the entire buffer
+        let dbm = dbs.try_mut().unwrap();
+        let _ : DivBuf = dbm.freeze();
+    }
+    {
+        // Freeze a buffer in the presence of other readers && writers
+        let mut dbm = dbs.try_mut().unwrap();
+        let right_half = dbm.split_off(4);
+        let _db_right_half = right_half.freeze();
+        let left_quarter = dbm.split_to(2);
+        let _db_left_quarter = left_quarter.freeze();
+        // We should still be able to mutate from the remaining DivBufMut
+        dbm[0] = 33;
+    }
 }
 
 #[test]
