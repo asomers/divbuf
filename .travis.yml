@@ -1,0 +1,21 @@
+---
+language: rust
+rust: stable
+cache: cargo
+
+before_cache:
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
+
+script:
+  - cargo build
+  - cargo test
+
+matrix:
+  include:
+    # 1.13.0 is the oldest known supported Rust version
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: 1.13.0
+
+    # Run tests on some extra platforms
+    - env: TARGET=i686-unknown-linux-gnu
