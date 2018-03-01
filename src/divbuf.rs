@@ -261,7 +261,7 @@ impl DivBuf {
         assert!(begin <= end);
         assert!(end <= self.len);
         let inner = unsafe { &*self.inner };
-        let old_refcount = inner.refcount.fetch_add(1, Acquire);
+        let old_refcount = inner.refcount.fetch_add(1, Relaxed);
         debug_assert_eq!(old_refcount & WRITER_FLAG, 0);
         debug_assert!(old_refcount & !WRITER_FLAG > 0);
         DivBuf {
@@ -693,7 +693,7 @@ impl Drop for DivBufMut {
         // if we get here, we know that:
         // * nobody else has a reference to this DivBufMut
         // * There are no living DivBufs for this buffer
-        if inner.refcount.fetch_sub(1, Release) != WRITER_FLAG + 1 {
+        if inner.refcount.fetch_sub(1, Relaxed) != WRITER_FLAG + 1 {
             // if we get here, we know that there are other DivBufMuts for this
             // buffer.  Don't clear the flag.
         } else {
