@@ -1,6 +1,7 @@
 // vim: tw=80
 extern crate divbuf;
 
+use std::borrow::{Borrow, BorrowMut};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -75,6 +76,14 @@ pub fn test_divbufshared_try_mut() {
 //
 // DivBuf methods
 //
+#[test]
+pub fn test_divbuf_borrow() {
+    let dbs = DivBufShared::from(vec![1, 2, 3]);
+    let db0 = dbs.try().unwrap();
+    let s : &[u8] = db0.borrow();
+    assert_eq!(s, &[1, 2, 3]);
+}
+
 #[test]
 pub fn test_divbuf_clone() {
     let dbs = DivBufShared::from(vec![1, 2, 3]);
@@ -293,6 +302,27 @@ pub fn test_divbuf_unsplit() {
 //
 // DivBufMut methods
 //
+#[test]
+pub fn test_divbufmut_borrow() {
+    let dbs = DivBufShared::from(vec![1, 2, 3]);
+    let dbm0 = dbs.try_mut().unwrap();
+    let s : &[u8] = dbm0.borrow();
+    assert_eq!(s, &[1, 2, 3]);
+}
+
+#[test]
+pub fn test_divbufmut_borrowmut() {
+    let dbs = DivBufShared::from(vec![1, 2, 3]);
+    {
+        let mut dbm0 = dbs.try_mut().unwrap();
+        let s : &mut [u8] = dbm0.borrow_mut();
+        s[0] = 9;
+    }
+    let db0 = dbs.try().unwrap();
+    let slice : &[u8] = &db0;
+    assert_eq!(slice, &[9, 2, 3]);
+}
+
 #[test]
 pub fn test_divbufmut_deref() {
     let dbs = DivBufShared::from(vec![1, 2, 3]);

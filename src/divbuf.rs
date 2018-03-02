@@ -1,6 +1,7 @@
 // vim: tw=80
 
 use std::{cmp, hash, mem, ops, slice};
+use std::borrow::{Borrow, BorrowMut};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
 
@@ -425,6 +426,13 @@ impl AsRef<[u8]> for DivBuf {
     }
 }
 
+impl Borrow<[u8]> for DivBuf {
+    fn borrow(&self) -> &[u8] {
+        let inner = unsafe { &*self.inner };
+        &inner.vec[..]
+    }
+}
+
 impl hash::Hash for DivBuf {
     fn hash<H>(&self, state: &mut H) where H: hash::Hasher {
         let s: &[u8] = self.as_ref();
@@ -696,6 +704,20 @@ impl AsRef<[u8]> for DivBufMut {
             let inner = &*self.inner;
             slice::from_raw_parts(&inner.vec[self.begin] as *const u8, self.len)
         }
+    }
+}
+
+impl Borrow<[u8]> for DivBufMut {
+    fn borrow(&self) -> &[u8] {
+        let inner = unsafe { &*self.inner };
+        &inner.vec[..]
+    }
+}
+
+impl BorrowMut<[u8]> for DivBufMut {
+    fn borrow_mut(&mut self) -> &mut [u8] {
+        let inner = unsafe { &mut *self.inner };
+        &mut inner.vec[..]
     }
 }
 
