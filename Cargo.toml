@@ -8,10 +8,12 @@ repository = "https://github.com/asomers/divbuf"
 description = """
 Buffer object that can be recursively divided into smaller buffers
 """
+documentation = "https://docs.rs/mio"
 categories = ["data-structures"]
 keywords = ["buffers", "io", "zero-copy"]
 exclude       = [
     ".gitignore",
+    ".travis.yml"
 ]
 
 [dependencies]

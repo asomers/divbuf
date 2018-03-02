@@ -3,6 +3,9 @@
 A library providing recursively divisible buffer objects.
 
 [![Build Status](https://travis-ci.org/asomers/divbuf.svg?branch=master)](https://travis-ci.org/asomers/divbuf)
+[![Crates.io](https://img.shields.io/crates/v/divbuf.svg?maxAge=2592000)](https://crates.io/crates/divbuf)
+
+[Documentation](https://docs.rs/divbuf)
 
 The `divbuf` crate provides a buffer structure `DivBufShared` that can be
 efficiently and safely divided into multiple smaller buffers.  Each child buffer
