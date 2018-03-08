@@ -1,6 +1,6 @@
 // vim: tw=80
 
-use std::{cmp, hash, mem, ops, slice};
+use std::{cmp, hash, mem, ops, slice, thread};
 use std::borrow::{Borrow, BorrowMut};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
@@ -211,6 +211,11 @@ impl Drop for DivBufShared {
                 Box::from_raw(self.inner);
             }
         } else {
+            if thread::panicking() {
+                // Leaking memory while panicking is preferable to a
+                // double-panic, which makes debugging hard
+                return;
+            }
             // We don't currently allow dropping a DivBufShared until all of its
             // child DivBufs and DivBufMuts have been dropped, too.
             panic!("Dropping a DivBufShared that's still referenced");
