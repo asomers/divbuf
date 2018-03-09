@@ -8,6 +8,74 @@ use std::hash::{Hash, Hasher};
 use divbuf::*;
 
 //
+// Chunks methods
+//
+#[test]
+#[should_panic]
+pub fn test_chunks_zero() {
+    let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    let db = dbs.try().unwrap();
+    db.into_chunks(0);
+}
+
+#[test]
+pub fn test_chunks_size_hint() {
+    let dbs = DivBufShared::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    assert_eq!(dbs.try().unwrap().into_chunks(1).size_hint(), (12, Some(12)));
+    assert_eq!(dbs.try().unwrap().into_chunks(2).size_hint(), (6, Some(6)));
+    assert_eq!(dbs.try().unwrap().into_chunks(3).size_hint(), (4, Some(4)));
+    assert_eq!(dbs.try().unwrap().into_chunks(4).size_hint(), (3, Some(3)));
+    assert_eq!(dbs.try().unwrap().into_chunks(5).size_hint(), (3, Some(3)));
+    assert_eq!(dbs.try().unwrap().into_chunks(6).size_hint(), (2, Some(2)));
+    assert_eq!(dbs.try().unwrap().into_chunks(7).size_hint(), (2, Some(2)));
+    assert_eq!(dbs.try().unwrap().into_chunks(8).size_hint(), (2, Some(2)));
+    assert_eq!(dbs.try().unwrap().into_chunks(9).size_hint(), (2, Some(2)));
+    assert_eq!(dbs.try().unwrap().into_chunks(10).size_hint(), (2, Some(2)));
+    assert_eq!(dbs.try().unwrap().into_chunks(11).size_hint(), (2, Some(2)));
+    assert_eq!(dbs.try().unwrap().into_chunks(12).size_hint(), (1, Some(1)));
+}
+
+//
+// ChunksMut methods
+//
+#[test]
+#[should_panic]
+pub fn test_chunks_mut_zero() {
+    let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    let dbm = dbs.try_mut().unwrap();
+    dbm.into_chunks(0);
+}
+
+#[test]
+pub fn test_chunks_mut_size_hint() {
+    let dbs = DivBufShared::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(1).size_hint(),
+               (12, Some(12)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(2).size_hint(),
+               (6, Some(6)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(3).size_hint(),
+               (4, Some(4)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(4).size_hint(),
+               (3, Some(3)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(5).size_hint(),
+               (3, Some(3)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(6).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(7).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(8).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(9).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(10).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(11).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_mut().unwrap().into_chunks(12).size_hint(),
+               (1, Some(1)));
+}
+
+//
 // DivBufShared methods
 //
 #[test]

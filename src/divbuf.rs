@@ -15,6 +15,76 @@ const WRITER_SHIFT: usize = 16;
 const READER_MASK: usize = 0xFFFF;
 const ONE_WRITER : usize = 1 << WRITER_SHIFT;
 
+/// The return type of
+/// [`DivBuf::into_chunks`](struct.DivBuf.html#method.into_chunks)
+#[derive(Debug)]
+pub struct Chunks {
+    db: DivBuf,
+    chunksize: usize
+}
+
+impl Chunks {
+    fn new(db: DivBuf, chunksize: usize) -> Self {
+        Chunks {db: db, chunksize: chunksize}
+    }
+}
+
+impl Iterator for Chunks {
+    type Item = DivBuf;
+
+    fn next(&mut self) -> Option<DivBuf> {
+        if self.db.is_empty() {
+            None
+        } else {
+            let size = cmp::min(self.chunksize, self.db.len());
+            Some(self.db.split_to(size))
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let mut c = self.db.len() / self.chunksize;
+        if self.db.len() % self.chunksize != 0 {
+            c += 1;
+        }
+        (c, Some(c))
+    }
+}
+
+/// The return type of
+/// [`DivBufMut::into_chunks`](struct.DivBufMut.html#method.into_chunks)
+#[derive(Debug)]
+pub struct ChunksMut {
+    db: DivBufMut,
+    chunksize: usize
+}
+
+impl ChunksMut {
+    fn new(db: DivBufMut, chunksize: usize) -> Self {
+        ChunksMut {db: db, chunksize: chunksize}
+    }
+}
+
+impl Iterator for ChunksMut {
+    type Item = DivBufMut;
+
+    fn next(&mut self) -> Option<DivBufMut> {
+        if self.db.is_empty() {
+            None
+        } else {
+            let size = cmp::min(self.chunksize, self.db.len());
+            Some(self.db.split_to(size))
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let mut c = self.db.len() / self.chunksize;
+        if self.db.len() % self.chunksize != 0 {
+            c += 1;
+        }
+        (c, Some(c))
+    }
+}
+
 #[derive(Debug)]
 struct Inner {
     vec: Vec<u8>,
@@ -246,6 +316,33 @@ unsafe impl Sync for DivBufShared {
 }
 
 impl DivBuf {
+    /// Break the buffer up into equal sized chunks
+    ///
+    /// Returns an interator which will yield equal sized chunks as smaller
+    /// `DivBuf`s.  If the `DivBuf` is not evenly divisible by `size`, then the
+    /// last chunk will be smaller.  This method is based on
+    /// `slice::chunks`, but with a few key differences:
+    ///
+    /// - It consumes `self`
+    /// - Yields smaller `DivBuf`s, not slices
+    /// - Yields owned objects, not references
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    /// let dbs = DivBufShared::from(vec![0, 1, 2, 3, 4, 5, 6, 7]);
+    /// let db = dbs.try().unwrap();
+    /// let mut iter = db.into_chunks(3);
+    /// assert_eq!(&iter.next().unwrap()[..], &[0, 1, 2][..]);
+    /// assert_eq!(&iter.next().unwrap()[..], &[3, 4, 5][..]);
+    /// assert_eq!(&iter.next().unwrap()[..], &[6, 7][..]);
+    /// assert!(&iter.next().is_none())
+    /// ```
+    pub fn into_chunks(self, size: usize) -> Chunks {
+        assert!(size != 0);
+        Chunks::new(self, size)
+    }
+
     /// Returns true if the `DivBuf` has length 0
     pub fn is_empty(&self) -> bool {
         self.len == 0
@@ -524,6 +621,33 @@ impl DivBufMut {
             begin: self.begin,
             len: self.len
         }
+    }
+
+    /// Break the buffer up into equal sized chunks
+    ///
+    /// Returns an interator which will yield equal sized chunks as smaller
+    /// `DivBufMut`s.  If the `DivBufMut` is not evenly divisible by `size`,
+    /// then the last chunk will be smaller.  This method is based on
+    /// `slice::chunk_muts`, but with a few key differences:
+    ///
+    /// - It consumes `self`
+    /// - Yields smaller `DivBufMut`s, not slices
+    /// - Yields owned objects, not references
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    /// let dbs = DivBufShared::from(vec![0, 1, 2, 3, 4, 5, 6, 7]);
+    /// let dbm = dbs.try_mut().unwrap();
+    /// let mut iter = dbm.into_chunks(3);
+    /// assert_eq!(&iter.next().unwrap()[..], &[0, 1, 2][..]);
+    /// assert_eq!(&iter.next().unwrap()[..], &[3, 4, 5][..]);
+    /// assert_eq!(&iter.next().unwrap()[..], &[6, 7][..]);
+    /// assert!(&iter.next().is_none())
+    /// ```
+    pub fn into_chunks(self, size: usize) -> ChunksMut {
+        assert!(size != 0);
+        ChunksMut::new(self, size)
     }
 
     /// Returns true if the `DivBufMut` has length 0
