@@ -566,9 +566,18 @@ impl Drop for DivBuf {
     }
 }
 
+impl Eq for DivBuf {
+}
+
 impl From<DivBufMut> for DivBuf {
     fn from(src: DivBufMut) -> DivBuf {
         src.freeze()
+    }
+}
+
+impl Ord for DivBuf {
+    fn cmp(&self, other: &DivBuf) -> cmp::Ordering {
+        self.as_ref().cmp(other.as_ref())
     }
 }
 
@@ -584,6 +593,11 @@ impl PartialEq<[u8]> for DivBuf {
     }
 }
 
+impl PartialOrd for DivBuf {
+    fn partial_cmp(&self, other: &DivBuf) -> Option<cmp::Ordering> {
+        self.as_ref().partial_cmp(other.as_ref())
+    }
+}
 
 impl DivBufMut {
     /// Extend self from iterator, without checking for validity
@@ -896,6 +910,15 @@ impl hash::Hash for DivBufMut {
     }
 }
 
+impl Eq for DivBufMut {
+}
+
+impl Ord for DivBufMut {
+    fn cmp(&self, other: &DivBufMut) -> cmp::Ordering {
+        self.as_ref().cmp(other.as_ref())
+    }
+}
+
 impl PartialEq for DivBufMut {
     fn eq(&self, other: &DivBufMut) -> bool {
         self.as_ref() == other.as_ref()
@@ -905,5 +928,11 @@ impl PartialEq for DivBufMut {
 impl PartialEq<[u8]> for DivBufMut {
     fn eq(&self, other: &[u8]) -> bool {
         self.as_ref() == other
+    }
+}
+
+impl PartialOrd for DivBufMut {
+    fn partial_cmp(&self, other: &DivBufMut) -> Option<cmp::Ordering> {
+        self.as_ref().partial_cmp(other.as_ref())
     }
 }
