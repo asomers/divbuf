@@ -2,6 +2,7 @@
 
 use std::{cmp, hash, mem, ops, slice, thread};
 use std::borrow::{Borrow, BorrowMut};
+use std::io;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
 
@@ -934,5 +935,22 @@ impl PartialEq<[u8]> for DivBufMut {
 impl PartialOrd for DivBufMut {
     fn partial_cmp(&self, other: &DivBufMut) -> Option<cmp::Ordering> {
         self.as_ref().partial_cmp(other.as_ref())
+    }
+}
+
+impl io::Write for DivBufMut {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.try_extend(buf)
+            .map(|_| buf.len())
+            .map_err(|s| io::Error::new(io::ErrorKind::Other, s))
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.try_extend(buf)
+            .map_err(|s| io::Error::new(io::ErrorKind::Other, s))
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }

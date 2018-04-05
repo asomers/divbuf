@@ -4,6 +4,7 @@ extern crate divbuf;
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::io::Write;
 
 use divbuf::*;
 
@@ -628,4 +629,29 @@ pub fn test_divbufmut_unsplit() {
         let dbm_unrelated = dbs1.try_mut().unwrap();
         assert!(dbm_end.unsplit(dbm_unrelated).is_err());
     }
+}
+
+#[test]
+pub fn test_divbufmut_write() {
+    let dbs0 = DivBufShared::with_capacity(0);
+    let mut dbm0 = dbs0.try_mut().unwrap();
+    dbm0.write("ABCD".as_bytes()).unwrap();
+    assert_eq!(&dbm0[..], &[65u8, 66u8, 67u8, 68u8][..])
+}
+
+#[test]
+pub fn test_divbufmut_write_all() {
+    let dbs0 = DivBufShared::with_capacity(0);
+    let mut dbm0 = dbs0.try_mut().unwrap();
+    dbm0.write_all("ABCD".as_bytes()).unwrap();
+    assert_eq!(&dbm0[..], &[65u8, 66u8, 67u8, 68u8][..])
+}
+
+#[test]
+pub fn test_divbufmut_flush() {
+    let dbs0 = DivBufShared::with_capacity(0);
+    let mut dbm0 = dbs0.try_mut().unwrap();
+    dbm0.write("ABCD".as_bytes()).unwrap();
+    dbm0.flush().unwrap();
+    assert_eq!(&dbm0[..], &[65u8, 66u8, 67u8, 68u8][..])
 }
