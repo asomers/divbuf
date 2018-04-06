@@ -787,6 +787,37 @@ impl DivBufMut {
         }
     }
 
+    /// Attempt to resize this `DivBufMut` in-place.
+    ///
+    /// If `new_len` is greater than the existing length, then the buffer will
+    /// be extended by the difference, with each element filled by `value`.  If
+    /// `new_len` is less than the existing length, then the buffer is simply
+    /// truncated.
+    ///
+    /// If this `DivBufMut` is not terminal, that is if it does not extend to
+    /// the end of the `DivBufShared`, then this operation will return an error
+    /// and the buffer will not be modified.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    /// let dbs = DivBufShared::with_capacity(64);
+    /// let mut dbm0 = dbs.try_mut().unwrap();
+    /// assert!(dbm0.try_resize(4, 0).is_ok());
+    /// assert_eq!(&dbm0[..], &[0, 0, 0, 0][..]);
+    /// ```
+    pub fn try_resize(&mut self, new_len: usize,
+                      value: u8) -> Result<(), &'static str> {
+        let inner = unsafe { &mut *self.inner };
+        if self.is_terminal() {
+            inner.vec.resize(new_len + self.begin, value);
+            self.len = new_len;
+            Ok(())
+        } else {
+            Err("Can't resize from a non-terminal buffer")
+        }
+    }
+
     /// Shortens the buffer, keeping the first `len` bytes and dropping the
     /// rest.
     ///

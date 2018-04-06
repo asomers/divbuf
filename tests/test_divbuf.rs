@@ -577,6 +577,32 @@ pub fn test_divbufmut_try_extend() {
 }
 
 #[test]
+pub fn test_divbufmut_try_resize() {
+    let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    {
+        let mut dbm0 = dbs.try_mut().unwrap();
+        // First, resize past the end of the vector
+        assert!(dbm0.try_resize(7, 42).is_ok());
+        assert_eq!(dbm0.len(), 7);
+        assert_eq!(&dbm0[..], &[1, 2, 3, 4, 5, 6, 42][..]);
+        // Then, do a truncation
+        assert!(dbm0.try_resize(4, 42).is_ok());
+        assert_eq!(dbm0, [1, 2, 3, 4][..]);
+        // Check that the shared vector was truncated, too
+        assert_eq!(dbs.len(), 4);
+        // A resize of a non-terminal DivBufMut should fail
+        let mut dbm1 = dbm0.split_to(2);
+        assert!(dbm1.try_resize(3, 42).is_err());
+        assert!(dbm1.try_resize(10, 42).is_err());
+        assert_eq!(dbs.len(), 4);
+        // Resizing a terminal DivBufMut should work, even if it doesn't start
+        // at the vector's beginning
+        assert!(dbm0.try_resize(5, 0).is_ok());
+        assert_eq!(&dbm0[..], &[3, 4, 0, 0, 0][..]);
+    }
+}
+
+#[test]
 pub fn test_divbufmut_try_truncate() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
     {
