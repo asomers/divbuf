@@ -808,12 +808,12 @@ impl DivBufMut {
     /// [`try_extend`]: #method.try_extend
     pub fn try_truncate(&mut self, len: usize) -> Result<(), &'static str> {
         let inner = unsafe { &mut *self.inner };
-        if self.begin + self.len != inner.vec.len() {
-            Err("Can't truncate a non-terminal DivBufMut")
-        } else {
+        if self.is_terminal() {
             inner.vec.truncate(self.begin + len);
             self.len = cmp::min(self.len, len);
             Ok(())
+        } else {
+            Err("Can't truncate a non-terminal DivBufMut")
         }
     }    
 
