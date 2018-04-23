@@ -1,6 +1,6 @@
 // vim: tw=80
 
-use std::{cmp, hash, mem, ops, slice, thread};
+use std::{cmp, hash, mem, ops, thread};
 use std::borrow::{Borrow, BorrowMut};
 use std::io;
 use std::sync::atomic::AtomicUsize;
@@ -524,7 +524,7 @@ impl AsRef<[u8]> for DivBuf {
     fn as_ref(&self) -> &[u8] {
         unsafe {
             let inner = &*self.inner;
-            slice::from_raw_parts(&inner.vec[self.begin] as *const u8, self.len)
+            &inner.vec[self.begin..(self.begin + self.len)][..]
         }
     }
 }
@@ -549,7 +549,7 @@ impl ops::Deref for DivBuf {
     fn deref(&self) -> &[u8] {
         unsafe {
             let inner = &*self.inner;
-            slice::from_raw_parts(&inner.vec[self.begin] as *const u8, self.len)
+            &inner.vec[self.begin..(self.begin + self.len)][..]
         }
     }
 }
@@ -877,7 +877,7 @@ impl AsRef<[u8]> for DivBufMut {
     fn as_ref(&self) -> &[u8] {
         unsafe {
             let inner = &*self.inner;
-            slice::from_raw_parts(&inner.vec[self.begin] as *const u8, self.len)
+            &inner.vec[self.begin..(self.begin + self.len)][..]
         }
     }
 }
@@ -902,7 +902,7 @@ impl ops::Deref for DivBufMut {
     fn deref(&self) -> &[u8] {
         unsafe {
             let inner = &*self.inner;
-            slice::from_raw_parts(&inner.vec[self.begin] as *const u8, self.len)
+            &inner.vec[self.begin..(self.begin + self.len)][..]
         }
     }
 }
@@ -911,7 +911,7 @@ impl ops::DerefMut for DivBufMut {
     fn deref_mut(&mut self) -> &mut [u8] {
         unsafe {
             let inner = &mut *self.inner;
-            slice::from_raw_parts_mut(&mut inner.vec[self.begin] as *mut u8, self.len)
+            &mut inner.vec[self.begin..(self.begin + self.len)][..]
         }
     }
 }

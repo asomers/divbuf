@@ -146,6 +146,22 @@ pub fn test_divbufshared_try_mut() {
 // DivBuf methods
 //
 #[test]
+pub fn test_divbuf_as_ref() {
+    let dbs = DivBufShared::from(vec![1, 2, 3]);
+    let db0 = dbs.try().unwrap();
+    let s : &[u8] = db0.as_ref();
+    assert_eq!(s, &[1, 2, 3]);
+}
+
+#[test]
+pub fn test_divbuf_as_ref_empty() {
+    let dbs = DivBufShared::from(vec![]);
+    let db0 = dbs.try().unwrap();
+    let s : &[u8] = db0.as_ref();
+    assert_eq!(s, &[]);
+}
+
+#[test]
 pub fn test_divbuf_borrow() {
     let dbs = DivBufShared::from(vec![1, 2, 3]);
     let db0 = dbs.try().unwrap();
@@ -170,6 +186,14 @@ pub fn test_divbuf_deref() {
     let db = dbs.try().unwrap();
     let slice : &[u8] = &db;
     assert_eq!(slice, &[1, 2, 3]);
+}
+
+#[test]
+pub fn test_divbuf_deref_empty() {
+    let dbs = DivBufShared::from(vec![]);
+    let db = dbs.try().unwrap();
+    let slice : &[u8] = &db;
+    assert_eq!(slice, &[]);
 }
 
 #[test]
@@ -372,6 +396,22 @@ pub fn test_divbuf_unsplit() {
 // DivBufMut methods
 //
 #[test]
+pub fn test_divbufmut_as_ref() {
+    let dbs = DivBufShared::from(vec![1, 2, 3]);
+    let dbm0 = dbs.try_mut().unwrap();
+    let s : &[u8] = dbm0.as_ref();
+    assert_eq!(s, &[1, 2, 3]);
+}
+
+#[test]
+pub fn test_divbufmut_as_ref_empty() {
+    let dbs = DivBufShared::from(vec![]);
+    let dbm0 = dbs.try_mut().unwrap();
+    let s : &[u8] = dbm0.as_ref();
+    assert_eq!(s, &[]);
+}
+
+#[test]
 pub fn test_divbufmut_borrow() {
     let dbs = DivBufShared::from(vec![1, 2, 3]);
     let dbm0 = dbs.try_mut().unwrap();
@@ -401,6 +441,14 @@ pub fn test_divbufmut_deref() {
 }
 
 #[test]
+pub fn test_divbufmut_deref_empty() {
+    let dbs = DivBufShared::from(vec![]);
+    let dbm = dbs.try_mut().unwrap();
+    let slice : &[u8] = &dbm;
+    assert_eq!(slice, &[]);
+}
+
+#[test]
 pub fn test_divbufmut_derefmut() {
     let dbs = DivBufShared::from(vec![1, 2, 3]);
     let mut dbm = dbs.try_mut().unwrap();
@@ -408,6 +456,14 @@ pub fn test_divbufmut_derefmut() {
     dbm[0] = 9;
     let slice : &mut [u8] = &mut dbm;
     assert_eq!(slice, &[9, 2, 3]);
+}
+
+#[test]
+pub fn test_divbufmut_derefmut_empty() {
+    let dbs = DivBufShared::from(vec![]);
+    let mut dbm = dbs.try_mut().unwrap();
+    let slice : &mut [u8] = &mut dbm;
+    assert_eq!(slice, &[]);
 }
 
 #[test]
