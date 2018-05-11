@@ -1,10 +1,12 @@
 // vim: tw=80
 extern crate divbuf;
+#[macro_use] extern crate lazy_static;
 
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::Write;
+use std::thread;
 
 use divbuf::*;
 
@@ -113,6 +115,25 @@ pub fn test_divbufshared_fromslice() {
 pub fn test_divbufshared_isempty() {
     assert!(DivBufShared::with_capacity(4096).is_empty());
     assert!(!DivBufShared::from(vec![1, 2, 3]).is_empty());
+}
+
+#[test]
+pub fn test_divbufshared_send() {
+    let dbs = DivBufShared::with_capacity(4096);
+    thread::spawn(move || {
+        let _ = dbs;
+    }).join().unwrap();
+}
+
+#[test]
+pub fn test_divbufshared_sync() {
+    lazy_static! {
+        pub static ref DBS: DivBufShared = DivBufShared::from(vec![0; 4096]);
+    }
+    let r = &DBS;
+    thread::spawn(move || {
+        let _ = r;
+    }).join().unwrap();
 }
 
 #[test]
@@ -239,6 +260,29 @@ pub fn test_divbuf_hash() {
     let dbs = DivBufShared::from(v);
     let db0 = dbs.try().unwrap();
     assert_eq!(simple_hash(&db0), expected);
+}
+
+#[test]
+pub fn test_divbuf_send() {
+    let dbs = DivBufShared::with_capacity(4096);
+    let db = dbs.try().unwrap();
+    thread::spawn(move || {
+        let _ = db;
+    }).join().unwrap();
+}
+
+#[test]
+pub fn test_divbuf_sync() {
+    lazy_static! {
+        pub static ref DBS: DivBufShared = DivBufShared::from(vec![0; 4096]);
+        pub static ref DB: DivBuf = DBS.try().unwrap();
+        //pub static ref DB: Option<DivBuf> = None;
+    }
+    //DB = Some(DBS.try().unwrap());
+    let r = &DB;
+    thread::spawn(move || {
+        let _ = r;
+    }).join().unwrap();
 }
 
 #[test]
@@ -556,6 +600,29 @@ pub fn test_divbufmut_reserve_from_the_middle() {
     let mut dbm = dbs.try_mut().unwrap();
     let mut left_half = dbm.split_to(3);
     left_half.reserve(128);
+}
+
+#[test]
+pub fn test_divbufmut_send() {
+    let dbs = DivBufShared::with_capacity(4096);
+    let dbm = dbs.try_mut().unwrap();
+    thread::spawn(move || {
+        let _ = dbm;
+    }).join().unwrap();
+}
+
+#[test]
+pub fn test_divbufmut_sync() {
+    lazy_static! {
+        pub static ref DBS: DivBufShared = DivBufShared::from(vec![0; 4096]);
+        pub static ref DBM: DivBufMut = DBS.try_mut().unwrap();
+        //pub static ref DB: Option<DivBuf> = None;
+    }
+    //DB = Some(DBS.try().unwrap());
+    let r = &DBM;
+    thread::spawn(move || {
+        let _ = r;
+    }).join().unwrap();
 }
 
 #[test]

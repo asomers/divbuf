@@ -313,8 +313,12 @@ impl From<Vec<u8>> for DivBufShared {
     }
 }
 
-unsafe impl Sync for DivBufShared {
-}
+// DivBufShared owns the target of the `inner` pointer, and no method allows
+// that pointer to be mutated.  Atomic refcounts guarantee that no more than one
+// writer at a time can modify `inner`'s contents (as long as DivBufMut is Sync,
+// which it is).  Therefore, DivBufShared is both Send and Sync.
+unsafe impl Send for DivBufShared {}
+unsafe impl Sync for DivBufShared {}
 
 impl DivBuf {
     /// Break the buffer up into equal sized chunks
@@ -599,6 +603,14 @@ impl PartialOrd for DivBuf {
         self.as_ref().partial_cmp(other.as_ref())
     }
 }
+
+// Atomic refcounts provide shared ownership over the `inner` pointer,
+// guaranteeing that it won't be freed as long as a `DivBuf` exists.  No method
+// allows that pointer to be mutated.  Atomic refcounts also guarantee that no
+// more than one writer at a time can modify `inner`'s contents (as long as
+// DivBufMut is Sync, which it is).  Therefore, DivBuf is both Send and Sync.
+unsafe impl Send for DivBuf {}
+unsafe impl Sync for DivBuf {}
 
 impl DivBufMut {
     /// Extend self from iterator, without checking for validity
@@ -968,6 +980,17 @@ impl PartialOrd for DivBufMut {
         self.as_ref().partial_cmp(other.as_ref())
     }
 }
+
+// Atomic refcounts provide shared ownership over the `inner` pointer,
+// guaranteeing that it won't be freed as long as a `DivBufMut` exists.  No method
+// allows that pointer to be mutated.  Atomic refcounts also guarantee that no
+// more than one writer at a time can modify `inner`'s contents (as long as
+// DivBufMut is Sync, which it is).  Thereforce, DivBufMut is Send.  And while
+// DivBufMut allows `inner`'s contents to be mutated, it does not provide
+// interior mutability; a &mut DivButMut is required.  Therefore, DivBufMut is
+// Sync as well.
+unsafe impl Send for DivBufMut {}
+unsafe impl Sync for DivBufMut {}
 
 impl io::Write for DivBufMut {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
