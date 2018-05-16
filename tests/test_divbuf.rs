@@ -3,6 +3,7 @@ extern crate divbuf;
 #[macro_use] extern crate lazy_static;
 
 use std::borrow::{Borrow, BorrowMut};
+use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::Write;
@@ -13,6 +14,16 @@ use divbuf::*;
 //
 // Chunks methods
 //
+#[test]
+pub fn test_chunks_iter() {
+    let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    let db = dbs.try().unwrap();
+    let mut chunks = db.into_chunks(3);
+    assert_eq!(&chunks.next().unwrap()[..], &[1, 2, 3][..]);
+    assert_eq!(&chunks.next().unwrap()[..], &[4, 5, 6][..]);
+    assert!(chunks.next().is_none());
+}
+
 #[test]
 #[should_panic]
 pub fn test_chunks_zero() {
@@ -41,6 +52,16 @@ pub fn test_chunks_size_hint() {
 //
 // ChunksMut methods
 //
+#[test]
+pub fn test_chunks_mut_iter() {
+    let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    let dbm = dbs.try_mut().unwrap();
+    let mut chunks = dbm.into_chunks(3);
+    assert_eq!(&chunks.next().unwrap()[..], &[1, 2, 3][..]);
+    assert_eq!(&chunks.next().unwrap()[..], &[4, 5, 6][..]);
+    assert!(chunks.next().is_none());
+}
+
 #[test]
 #[should_panic]
 pub fn test_chunks_mut_zero() {
@@ -88,6 +109,19 @@ pub fn test_divbufshared_caplen() {
     let dbs = DivBufShared::from(v);
     assert_eq!(dbs.capacity(), 64);
     assert_eq!(dbs.len(), 1);
+}
+
+// DivBufShared::drop should not cause a double panic
+#[test]
+#[should_panic(expected = "original panic")]
+pub fn test_divbufshared_dont_double_panic() {
+    let mut _db0: Option<DivBuf> = None;
+    {
+        let dbs = DivBufShared::with_capacity(4096);
+        let db = dbs.try().unwrap();
+        _db0 = Some(db);
+        panic!("original panic");
+    }
 }
 
 #[test]
@@ -260,6 +294,22 @@ pub fn test_divbuf_hash() {
     let dbs = DivBufShared::from(v);
     let db0 = dbs.try().unwrap();
     assert_eq!(simple_hash(&db0), expected);
+}
+
+#[test]
+pub fn test_divbuf_ord() {
+    let dbs = DivBufShared::from(vec![0, 1, 0, 2]);
+    let db0 = dbs.try().unwrap().slice_to(2);
+    let db1 = dbs.try().unwrap().slice_from(2);
+    assert_eq!(db0.cmp(&db1), Ordering::Less);
+}
+
+#[test]
+pub fn test_divbuf_partial_ord() {
+    let dbs = DivBufShared::from(vec![0, 1, 0, 2]);
+    let db0 = dbs.try().unwrap().slice_to(2);
+    let db1 = dbs.try().unwrap().slice_from(2);
+    assert!(db0 < db1);
 }
 
 #[test]
@@ -584,6 +634,22 @@ pub fn test_divbufmut_is_empty() {
 }
 
 #[test]
+pub fn test_divbufmut_ord() {
+    let dbs = DivBufShared::from(vec![0, 1, 0, 2]);
+    let mut dbm0 = dbs.try_mut().unwrap();
+    let dbm1 = dbm0.split_off(2);
+    assert_eq!(dbm0.cmp(&dbm1), Ordering::Less);
+}
+
+#[test]
+pub fn test_divbufmut_partial_ord() {
+    let dbs = DivBufShared::from(vec![0, 1, 0, 2]);
+    let mut dbm0 = dbs.try_mut().unwrap();
+    let dbm1 = dbm0.split_off(2);
+    assert!(dbm0 < dbm1);
+}
+
+#[test]
 pub fn test_divbufmut_reserve() {
     let v = Vec::<u8>::with_capacity(64);
     let dbs = DivBufShared::from(v);
@@ -789,11 +855,27 @@ pub fn test_divbufmut_write() {
 }
 
 #[test]
+pub fn test_divbufmut_write_nonterminal() {
+    let dbs0 = DivBufShared::from(vec![0, 1, 2, 3]);
+    let mut dbm0 = dbs0.try_mut().unwrap();
+    let _ = dbm0.split_off(2);
+    assert!(dbm0.write("ABCD".as_bytes()).is_err());
+}
+
+#[test]
 pub fn test_divbufmut_write_all() {
     let dbs0 = DivBufShared::with_capacity(0);
     let mut dbm0 = dbs0.try_mut().unwrap();
     dbm0.write_all("ABCD".as_bytes()).unwrap();
     assert_eq!(&dbm0[..], &[65u8, 66u8, 67u8, 68u8][..])
+}
+
+#[test]
+pub fn test_divbufmut_write_all_nonterminal() {
+    let dbs0 = DivBufShared::from(vec![0, 1, 2, 3]);
+    let mut dbm0 = dbs0.try_mut().unwrap();
+    let _ = dbm0.split_off(2);
+    assert!(dbm0.write_all("ABCD".as_bytes()).is_err());
 }
 
 #[test]
