@@ -18,11 +18,13 @@ const ONE_WRITER : usize = 1 << WRITER_SHIFT;
 
 /// The return type of
 /// [`DivBuf::into_chunks`](struct.DivBuf.html#method.into_chunks)
+// LCOV_EXCL_START
 #[derive(Debug)]
 pub struct Chunks {
     db: DivBuf,
     chunksize: usize
 }
+// LCOV_EXCL_STOP
 
 impl Chunks {
     fn new(db: DivBuf, chunksize: usize) -> Self {
@@ -53,11 +55,13 @@ impl Iterator for Chunks {
 
 /// The return type of
 /// [`DivBufMut::into_chunks`](struct.DivBufMut.html#method.into_chunks)
+// LCOV_EXCL_START
 #[derive(Debug)]
 pub struct ChunksMut {
     db: DivBufMut,
     chunksize: usize
 }
+// LCOV_EXCL_STOP
 
 impl ChunksMut {
     fn new(db: DivBufMut, chunksize: usize) -> Self {
@@ -86,6 +90,7 @@ impl Iterator for ChunksMut {
     }
 }
 
+// LCOV_EXCL_START
 #[derive(Debug)]
 struct Inner {
     vec: Vec<u8>,
@@ -93,6 +98,7 @@ struct Inner {
     /// half.
     refcount: AtomicUsize,
 }
+// LCOV_EXCL_STOP
 
 /// The "entry point" to the `divbuf` crate.
 ///
@@ -100,10 +106,12 @@ struct Inner {
 /// application will typically create an instance of this class for every
 /// independent buffer it wants to manage, and then create child `DivBuf`s or
 /// `DivBufMut`s to access the storage.
+// LCOV_EXCL_START
 #[derive(Debug)]
 pub struct DivBufShared {
     inner: *mut Inner,
 }
+// LCOV_EXCL_STOP
 
 /// Provides read-only access to a buffer.
 ///
@@ -140,6 +148,7 @@ pub struct DivBufShared {
 /// [`split_to`]: #method.split_to
 /// [`try_mut`]: #method.try_mut
 /// [`unsplit`]: #method.unsplit
+// LCOV_EXCL_START
 #[derive(Debug)]
 pub struct DivBuf {
     // inner must be *mut just to support the try_mut method
@@ -148,6 +157,7 @@ pub struct DivBuf {
     begin: usize,
     len: usize,
 }
+// LCOV_EXCL_STOP
 
 /// Provides read-write access to a buffer
 ///
@@ -180,6 +190,7 @@ pub struct DivBuf {
 /// [`try_extend`]: #method.try_extend
 /// [`reserve`]: #method.reserve
 /// [`try_truncate`]: #method.try_truncate
+// LCOV_EXCL_START
 #[derive(Debug)]
 pub struct DivBufMut {
     inner: *mut Inner,
@@ -187,6 +198,7 @@ pub struct DivBufMut {
     begin: usize,
     len: usize,
 }
+// LCOV_EXCL_STOP
 
 impl DivBufShared {
     /// Returns the number of bytes the buffer can hold without reallocating.
@@ -494,7 +506,7 @@ impl DivBuf {
             });
             mem::forget(self);
             mutable_self
-        } else {
+        } else {    // LCOV_EXCL_LINE   kcov false negative
             Err(self)
         }
     }
