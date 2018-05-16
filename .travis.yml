@@ -38,6 +38,6 @@ after_success:
     cd ${TRAVIS_BUILD_DIR}
     rm -rf kcov
   fi &&
-  cargo kcov --verbose --include-pattern='divbuf/src' &&
+  cargo kcov --verbose -- --include-pattern='divbuf/src' &&
   bash <(curl -s https://codecov.io/bash) &&
   echo "CodeCov: uploaded coverage data"
