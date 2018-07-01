@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["DivBuf","Provides read-only access to a buffer."],["DivBufMut","Provides read-write access to a buffer"],["DivBufShared","The \"entry point\" to the `divbuf` crate."]]});
