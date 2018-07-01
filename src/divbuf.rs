@@ -124,6 +124,7 @@ pub struct DivBufShared {
 /// the same `DivBufShared`.
 ///
 /// # Examples
+///
 /// ```
 /// # use divbuf::*;
 /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
@@ -133,6 +134,7 @@ pub struct DivBufShared {
 ///
 /// Unlike [`DivBufMut`], a `DivBuf` cannot be used to modify the buffer.  The
 /// following example will fail.
+///
 /// ```compile_fail
 /// # use divbuf::*;
 /// let dbs = DivBufShared::from(vec![1, 2, 3]);
@@ -176,6 +178,7 @@ pub struct DivBuf {
 /// but there's no way to create overlapping `DivBufMut`s.
 ///
 /// # Examples
+///
 /// ```
 /// # use divbuf::*;
 /// let dbs = DivBufShared::from(vec![0; 64]);
