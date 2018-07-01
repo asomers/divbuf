@@ -1,4 +1,4 @@
-## [Unreleased] - ReleaseDate
+## [0.2.0] - 2018-07-01
 ### Added
 - Implemented `Borrow` and `BorrowMut` for `DivBuf` and `DivBufMut`
 - Added {DivBuf,DivBufMut}::into_chunks
