@@ -1,6 +1,6 @@
 [package]
 name = "divbuf"
-version = "0.2.0"
+version = "0.2.1-pre"
 authors = ["Alan Somers <asomers@gmail.com>"]
 license = "MIT"
 readme = "README.md"
