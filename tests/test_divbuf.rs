@@ -111,28 +111,6 @@ pub fn test_divbufshared_caplen() {
     assert_eq!(dbs.len(), 1);
 }
 
-// DivBufShared::drop should not cause a double panic
-#[test]
-#[should_panic(expected = "original panic")]
-pub fn test_divbufshared_dont_double_panic() {
-    let mut _db0: Option<DivBuf> = None;
-    {
-        let dbs = DivBufShared::with_capacity(4096);
-        let db = dbs.try().unwrap();
-        _db0 = Some(db);
-        panic!("original panic");
-    }
-}
-
-#[test]
-#[should_panic(expected = "Dropping a DivBufShared that's still referenced")]
-pub fn test_divbufshared_drop_referenced() {
-    let _db0 = {
-        let dbs = DivBufShared::with_capacity(4096);
-        dbs.try().unwrap()
-    };
-}
-
 #[test]
 pub fn test_divbufshared_fromslice() {
     let s = b"abcdefg";
@@ -249,6 +227,14 @@ pub fn test_divbuf_deref_empty() {
     let db = dbs.try().unwrap();
     let slice : &[u8] = &db;
     assert_eq!(slice, &[]);
+}
+
+// A DivBuf should be able to own its storage, and will free it on last drop
+#[test]
+pub fn test_divbuf_drop_last() {
+    let dbs0 = DivBufShared::from(vec![1, 2, 3]);
+    let _db0 = dbs0.try().unwrap();
+    drop(dbs0);
 }
 
 #[test]
@@ -558,6 +544,14 @@ pub fn test_divbufmut_derefmut_empty() {
     let mut dbm = dbs.try_mut().unwrap();
     let slice : &mut [u8] = &mut dbm;
     assert_eq!(slice, &[]);
+}
+
+// A DivBufMut should be able to own its storage, and will free it on last drop
+#[test]
+pub fn test_divbufmut_drop_last() {
+    let dbs0 = DivBufShared::from(vec![1, 2, 3]);
+    let _dbm0 = dbs0.try_mut().unwrap();
+    drop(dbs0);
 }
 
 #[test]

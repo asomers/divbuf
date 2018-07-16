@@ -1,9 +1,9 @@
 // vim: tw=80
 
-use std::{cmp, hash, mem, ops, thread};
+use std::{cmp, hash, mem, ops};
 use std::borrow::{Borrow, BorrowMut};
 use std::io;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{self, AtomicUsize};
 use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
 
 #[cfg(target_pointer_width = "64")]
@@ -96,7 +96,9 @@ struct Inner {
     vec: Vec<u8>,
     /// Stores the number of readers in the low half, and writers in the high
     /// half.
-    refcount: AtomicUsize,
+    accessors: AtomicUsize,
+    /// Stores the total number of DivBufShareds owning this Inner
+    sharers: AtomicUsize
 }
 // LCOV_EXCL_STOP
 
@@ -237,8 +239,8 @@ impl DivBufShared {
     /// [`DivBufMut`]: struct.DivBufMut.html
     pub fn try(&self) -> Result<DivBuf, &'static str> {
         let inner = unsafe { &*self.inner };
-        if inner.refcount.fetch_add(1, Acquire) >> WRITER_SHIFT != 0 {
-            inner.refcount.fetch_sub(1, Relaxed);
+        if inner.accessors.fetch_add(1, Acquire) >> WRITER_SHIFT != 0 {
+            inner.accessors.fetch_sub(1, Relaxed);
             Err("Cannot create a DivBuf when DivBufMuts are active")
         } else {
             let l = inner.vec.len();
@@ -250,7 +252,7 @@ impl DivBufShared {
         }
     }
 
-    /// Try to create a mutable `DivBufMt` that refers to the entirety of this
+    /// Try to create a mutable `DivBufMut` that refers to the entirety of this
     /// buffer.  Will fail if there are any [`DivBufMut`] or [`DivBuf`] objects
     /// referring to this buffer.
     ///
@@ -265,7 +267,7 @@ impl DivBufShared {
     /// [`DivBufMut`]: struct.DivBufMut.html
     pub fn try_mut(&self) -> Result<DivBufMut, &'static str> {
         let inner = unsafe { &*self.inner };
-        if inner.refcount.compare_and_swap(0, ONE_WRITER, AcqRel) == 0 {
+        if inner.accessors.compare_and_swap(0, ONE_WRITER, AcqRel) == 0 {
             let l = inner.vec.len();
             Ok(DivBufMut {
                 inner: self.inner,
@@ -288,23 +290,16 @@ impl DivBufShared {
 
 impl Drop for DivBufShared {
     fn drop(&mut self) {
-        // if we get here, that means that nobody else has a reference to this
-        // DivBufShared.  So we don't have to worry that somebody else will
-        // reference self.inner while we're Drop'ing it.
         let inner = unsafe { &*self.inner };
-        if inner.refcount.load(Relaxed) == 0 { 
-            unsafe {
-                Box::from_raw(self.inner);
+        if inner.sharers.fetch_sub(1, Release) == 1 {
+            if inner.accessors.load(Relaxed) == 0 {
+                // See the comments in std::sync::Arc::drop for why the fence is
+                // required.
+                atomic::fence(Acquire);
+                unsafe {
+                    Box::from_raw(self.inner);
+                }
             }
-        } else {
-            if thread::panicking() {
-                // Leaking memory while panicking is preferable to a
-                // double-panic, which makes debugging hard
-                return;
-            }
-            // We don't currently allow dropping a DivBufShared until all of its
-            // child DivBufs and DivBufMuts have been dropped, too.
-            panic!("Dropping a DivBufShared that's still referenced");
         }
     }
 }
@@ -318,9 +313,11 @@ impl<'a> From<&'a [u8]> for DivBufShared {
 impl From<Vec<u8>> for DivBufShared {
     fn from(src: Vec<u8>) -> DivBufShared {
         let rc = AtomicUsize::new(0);
+        let sharers = AtomicUsize::new(1);
         let inner = Box::new(Inner {
             vec: src,
-            refcount: rc
+            accessors: rc,
+            sharers: sharers
         });
         DivBufShared{
             inner: Box::into_raw(inner)
@@ -387,8 +384,8 @@ impl DivBuf {
         assert!(begin <= end);
         assert!(end <= self.len);
         let inner = unsafe { &*self.inner };
-        let old_refcount = inner.refcount.fetch_add(1, Relaxed);
-        debug_assert!(old_refcount & READER_MASK > 0);
+        let old_accessors = inner.accessors.fetch_add(1, Relaxed);
+        debug_assert!(old_accessors & READER_MASK > 0);
         DivBuf {
             inner: self.inner,
             begin: self.begin + begin,
@@ -445,8 +442,8 @@ impl DivBuf {
     pub fn split_off(&mut self, at: usize) -> DivBuf {
         assert!(at <= self.len, "Can't split past the end");
         let inner = unsafe { &*self.inner };
-        let old_refcount = inner.refcount.fetch_add(1, Relaxed);
-        debug_assert!(old_refcount & READER_MASK > 0);
+        let old_accessors = inner.accessors.fetch_add(1, Relaxed);
+        debug_assert!(old_accessors & READER_MASK > 0);
         let right_half = DivBuf {
             inner: self.inner,
             begin: self.begin + at,
@@ -475,8 +472,8 @@ impl DivBuf {
     pub fn split_to(&mut self, at: usize) -> DivBuf {
         assert!(at <= self.len, "Can't split past the end");
         let inner = unsafe { &*self.inner };
-        let old_refcount = inner.refcount.fetch_add(1, Relaxed);
-        debug_assert!(old_refcount & READER_MASK > 0);
+        let old_accessors = inner.accessors.fetch_add(1, Relaxed);
+        debug_assert!(old_accessors & READER_MASK > 0);
         let left_half = DivBuf {
             inner: self.inner,
             begin: self.begin,
@@ -501,7 +498,7 @@ impl DivBuf {
     /// ```
     pub fn try_mut(self) -> Result<DivBufMut, DivBuf> {
         let inner = unsafe { &*self.inner };
-        if inner.refcount.compare_and_swap(1, ONE_WRITER, AcqRel) == 1 {
+        if inner.accessors.compare_and_swap(1, ONE_WRITER, AcqRel) == 1 {
             let mutable_self = Ok(DivBufMut {
                 inner: self.inner,
                 begin: self.begin,
@@ -582,7 +579,14 @@ impl Clone for DivBuf {
 impl Drop for DivBuf {
     fn drop(&mut self) {
         let inner = unsafe { &*self.inner };
-        inner.refcount.fetch_sub(1, Release);
+        if inner.accessors.fetch_sub(1, Release) == 1 {
+            if inner.sharers.load(Relaxed) == 0 {
+                atomic::fence(Acquire);
+                unsafe {
+                    Box::from_raw(self.inner);
+                }
+            }
+        }
     }
 }
 
@@ -656,8 +660,8 @@ impl DivBufMut {
         // other DivButMuts that overlap with this one, so it's safe to create a
         // DivBuf whose range is restricted to what self covers
         let inner = unsafe { &*self.inner };
-        let old_refcount = inner.refcount.fetch_add(1, Relaxed);
-        debug_assert!(old_refcount >> WRITER_SHIFT > 0);
+        let old_accessors = inner.accessors.fetch_add(1, Relaxed);
+        debug_assert!(old_accessors >> WRITER_SHIFT > 0);
         DivBuf {
             inner: self.inner,
             begin: self.begin,
@@ -745,8 +749,8 @@ impl DivBufMut {
     pub fn split_off(&mut self, at: usize) -> DivBufMut {
         assert!(at <= self.len, "Can't split past the end");
         let inner = unsafe { &*self.inner };
-        let old_refcount = inner.refcount.fetch_add(ONE_WRITER, Relaxed);
-        debug_assert!(old_refcount >> WRITER_SHIFT > 0);
+        let old_accessors = inner.accessors.fetch_add(ONE_WRITER, Relaxed);
+        debug_assert!(old_accessors >> WRITER_SHIFT > 0);
         let right_half = DivBufMut {
             inner: self.inner,
             begin: self.begin + at,
@@ -775,8 +779,8 @@ impl DivBufMut {
     pub fn split_to(&mut self, at: usize) -> DivBufMut {
         assert!(at <= self.len, "Can't split past the end");
         let inner = unsafe { &*self.inner };
-        let old_refcount = inner.refcount.fetch_add(ONE_WRITER, Relaxed);
-        debug_assert!(old_refcount >> WRITER_SHIFT > 0);
+        let old_accessors = inner.accessors.fetch_add(ONE_WRITER, Relaxed);
+        debug_assert!(old_accessors >> WRITER_SHIFT > 0);
         let left_half = DivBufMut {
             inner: self.inner,
             begin: self.begin,
@@ -946,9 +950,14 @@ impl ops::DerefMut for DivBufMut {
 impl Drop for DivBufMut {
     fn drop(&mut self) {
         let inner = unsafe { &*self.inner };
-        // if we get here, we know that:
-        // * nobody else has a reference to this DivBufMut
-        inner.refcount.fetch_sub(ONE_WRITER, Release);
+        if inner.accessors.fetch_sub(ONE_WRITER, Release) == ONE_WRITER {
+            if inner.sharers.load(Relaxed) == 0 {
+                atomic::fence(Acquire);
+                unsafe {
+                    Box::from_raw(self.inner);
+                }
+            }
+        }
     }
 }
 
