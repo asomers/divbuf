@@ -8,10 +8,6 @@ rust:
   - beta
   - nightly
 
-matrix:
-  allow_failures:
-    - rust: nightly
-
 env:
   global:
   # Improves coverage accuracy
@@ -27,6 +23,14 @@ addons:
       - gcc
       - binutils-dev
       - libiberty-dev
+
+script:
+  - cargo test --verbose
+  - |
+    if [ "$TRAVIS_RUST_VERSION" = "nightly" ]; then
+        env RUSTFLAGS="-Z sanitizer=address" cargo test --target x86_64-unknown-linux-gnu --test functional &&
+        env RUSTFLAGS="-Z sanitizer=address" cargo test --target x86_64-unknown-linux-gnu --test thread_race
+    fi
 
 after_success:
 - |

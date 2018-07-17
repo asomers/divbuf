@@ -22,9 +22,8 @@ few key differences:
 - A `BytesMut` object always has the sole ability to access its own data.
   Once a `BytesMut` object is created, there is no other way to modify or
   even read its data that doesn't involve that object.  A `DivBufMut`, on
-  the other hand, shares its data with its parent `DivBufShared`.  After
-  that `DivBufMut` has been dropped, another can be created from the
-  parent.
+  the other hand, can share its data with a `DivBufShared`.  After that
+  `DivBufMut` has been dropped, another can be created from the `DivBufShared`.
 - `bytes` contains numerous optimizations for dealing with small arrays,
   such as inline storage.  However, some of those optimizations result in
   data copying, which is anathema to `divbuf`.  `divbuf` therefore does not
