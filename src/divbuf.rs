@@ -2,6 +2,7 @@
 
 use std::{cmp, hash, mem, ops};
 use std::borrow::{Borrow, BorrowMut};
+use std::fmt::{self, Debug, Formatter};
 use std::io;
 use std::sync::atomic::{self, AtomicUsize};
 use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
@@ -108,12 +109,9 @@ struct Inner {
 /// application will typically create an instance of this class for every
 /// independent buffer it wants to manage, and then create child `DivBuf`s or
 /// `DivBufMut`s to access the storage.
-// LCOV_EXCL_START
-#[derive(Debug)]
 pub struct DivBufShared {
     inner: *mut Inner,
 }
-// LCOV_EXCL_STOP
 
 /// Provides read-only access to a buffer.
 ///
@@ -285,6 +283,13 @@ impl DivBufShared {
     /// via a child `DivBufMut`.
     pub fn with_capacity(capacity: usize) -> Self {
         Self::from(Vec::with_capacity(capacity))
+    }
+}
+
+impl Debug for DivBufShared {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
+        let inner = unsafe { &*self.inner };
+        write!(f, "DivBufShared {{ inner: {:?} }}", inner)
     }
 }
 

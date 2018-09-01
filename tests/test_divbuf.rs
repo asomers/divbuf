@@ -1,6 +1,7 @@
 // vim: tw=80
 extern crate divbuf;
 #[macro_use] extern crate lazy_static;
+extern crate version_check;
 
 use std::borrow::{Borrow, BorrowMut};
 use std::cmp::Ordering;
@@ -109,6 +110,20 @@ pub fn test_divbufshared_caplen() {
     let dbs = DivBufShared::from(v);
     assert_eq!(dbs.capacity(), 64);
     assert_eq!(dbs.len(), 1);
+}
+
+#[test]
+pub fn test_divbufshared_fmt() {
+    let v = Vec::<u8>::with_capacity(64);
+    let dbs = DivBufShared::from(v);
+    let output = format!("{:?}", &dbs);
+    // In 1.27.0 the Debug implementation of AtomicUsize changed
+    let expected = if version_check::is_min_version("1.27.0").unwrap().0 {
+        "DivBufShared { inner: Inner { vec: [], accessors: 0, sharers: 1 } }"
+    } else {
+        "DivBufShared { inner: Inner { vec: [], accessors: AtomicUsize(0), sharers: AtomicUsize(1) } }"
+    };
+    assert_eq!(output, expected);
 }
 
 #[test]
