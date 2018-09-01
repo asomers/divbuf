@@ -112,6 +112,15 @@ pub fn test_divbufshared_caplen() {
 }
 
 #[test]
+pub fn test_divbufshared_fmt() {
+    let v = Vec::<u8>::with_capacity(64);
+    let dbs = DivBufShared::from(v);
+    let output = format!("{:?}", &dbs);
+    assert_eq!(output,
+        "DivBufShared { inner: Inner { vec: [], accessors: 0, sharers: 1 } }");
+}
+
+#[test]
 pub fn test_divbufshared_fromslice() {
     let s = b"abcdefg";
     let dbs = DivBufShared::from(&s[..]);

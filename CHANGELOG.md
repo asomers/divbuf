@@ -4,6 +4,10 @@
   even after the original `DivBufShared` has been dropped.
   https://github.com/asomers/divbuf/pull/1
 
+### Changed
+- Better Debug formatting for `DivBufShared`
+  https://github.com/asomers/divbuf/pull/2
+
 ## [0.2.0] - 2018-07-01
 ### Added
 - Implemented `Borrow` and `BorrowMut` for `DivBuf` and `DivBufMut`
