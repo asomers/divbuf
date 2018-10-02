@@ -713,7 +713,7 @@ impl DivBufMut {
         self.begin + self.len == oldlen
     }
 
-    /// Get the length of this `DivBuf`, _not_ the underlying storage
+    /// Get the length of this `DivBufMut`, _not_ the underlying storage
     pub fn len(&self) -> usize {
         self.len
     }
