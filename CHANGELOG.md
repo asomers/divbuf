@@ -1,4 +1,4 @@
-## [Unreleased] - ReleaseDate
+## [0.3.0] - 2018-10-27
 ### Added
 - `DivBuf`s and `DivBufMut`s now share ownership of the data, so they can live
   even after the original `DivBufShared` has been dropped.
