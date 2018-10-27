@@ -12,6 +12,10 @@ env:
   global:
   # Improves coverage accuracy
   - RUSTFLAGS="-C link-dead-code"
+  # rustc 1.31.0-nightly 2018-10-20 on Travis reports ODR violations within
+  # asan itself.
+  # https://travis-ci.org/asomers/divbuf/jobs/447109902
+  - ASAN_OPTIONS=detect_odr_violation=0
 
 addons:
   apt:
