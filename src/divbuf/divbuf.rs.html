@@ -1023,13 +1023,28 @@
 <span id="1023">1023</span>
 <span id="1024">1024</span>
 <span id="1025">1025</span>
+<span id="1026">1026</span>
+<span id="1027">1027</span>
+<span id="1028">1028</span>
+<span id="1029">1029</span>
+<span id="1030">1030</span>
+<span id="1031">1031</span>
+<span id="1032">1032</span>
+<span id="1033">1033</span>
+<span id="1034">1034</span>
+<span id="1035">1035</span>
+<span id="1036">1036</span>
+<span id="1037">1037</span>
+<span id="1038">1038</span>
+<span id="1039">1039</span>
 </pre><pre class="rust ">
 <span class="comment">// vim: tw=80</span>
 
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cmp</span>, <span class="ident">hash</span>, <span class="ident">mem</span>, <span class="ident">ops</span>, <span class="ident">thread</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cmp</span>, <span class="ident">hash</span>, <span class="ident">mem</span>, <span class="ident">ops</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::{<span class="ident">Borrow</span>, <span class="ident">BorrowMut</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::{<span class="self">self</span>, <span class="ident">Debug</span>, <span class="ident">Formatter</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">atomic</span>::<span class="ident">AtomicUsize</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">atomic</span>::{<span class="self">self</span>, <span class="ident">AtomicUsize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">atomic</span>::<span class="ident">Ordering</span>::{<span class="ident">Relaxed</span>, <span class="ident">Acquire</span>, <span class="ident">Release</span>, <span class="ident">AcqRel</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)]</span>
@@ -1122,7 +1137,9 @@
     <span class="ident">vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Stores the number of readers in the low half, and writers in the high</span>
     <span class="doccomment">/// half.</span>
-    <span class="ident">refcount</span>: <span class="ident">AtomicUsize</span>,
+    <span class="ident">accessors</span>: <span class="ident">AtomicUsize</span>,
+    <span class="doccomment">/// Stores the total number of DivBufShareds owning this Inner</span>
+    <span class="ident">sharers</span>: <span class="ident">AtomicUsize</span>
 }
 <span class="comment">// LCOV_EXCL_STOP</span>
 
@@ -1132,12 +1149,9 @@
 <span class="doccomment">/// application will typically create an instance of this class for every</span>
 <span class="doccomment">/// independent buffer it wants to manage, and then create child `DivBuf`s or</span>
 <span class="doccomment">/// `DivBufMut`s to access the storage.</span>
-<span class="comment">// LCOV_EXCL_START</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DivBufShared</span> {
     <span class="ident">inner</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">Inner</span>,
 }
-<span class="comment">// LCOV_EXCL_STOP</span>
 
 <span class="doccomment">/// Provides read-only access to a buffer.</span>
 <span class="doccomment">///</span>
@@ -1263,8 +1277,8 @@
     <span class="doccomment">/// [`DivBufMut`]: struct.DivBufMut.html</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DivBuf</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Acquire</span>) <span class="op">&gt;&gt;</span> <span class="ident">WRITER_SHIFT</span> <span class="op">!=</span> <span class="number">0</span> {
-            <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_sub</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
+        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Acquire</span>) <span class="op">&gt;&gt;</span> <span class="ident">WRITER_SHIFT</span> <span class="op">!=</span> <span class="number">0</span> {
+            <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_sub</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
             <span class="prelude-val">Err</span>(<span class="string">&quot;Cannot create a DivBuf when DivBufMuts are active&quot;</span>)
         } <span class="kw">else</span> {
             <span class="kw">let</span> <span class="ident">l</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">vec</span>.<span class="ident">len</span>();
@@ -1276,7 +1290,7 @@
         }
     }
 
-    <span class="doccomment">/// Try to create a mutable `DivBufMt` that refers to the entirety of this</span>
+    <span class="doccomment">/// Try to create a mutable `DivBufMut` that refers to the entirety of this</span>
     <span class="doccomment">/// buffer.  Will fail if there are any [`DivBufMut`] or [`DivBuf`] objects</span>
     <span class="doccomment">/// referring to this buffer.</span>
     <span class="doccomment">///</span>
@@ -1291,7 +1305,7 @@
     <span class="doccomment">/// [`DivBufMut`]: struct.DivBufMut.html</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_mut</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DivBufMut</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">compare_and_swap</span>(<span class="number">0</span>, <span class="ident">ONE_WRITER</span>, <span class="ident">AcqRel</span>) <span class="op">==</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">compare_and_swap</span>(<span class="number">0</span>, <span class="ident">ONE_WRITER</span>, <span class="ident">AcqRel</span>) <span class="op">==</span> <span class="number">0</span> {
             <span class="kw">let</span> <span class="ident">l</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">vec</span>.<span class="ident">len</span>();
             <span class="prelude-val">Ok</span>(<span class="ident">DivBufMut</span> {
                 <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>,
@@ -1312,25 +1326,25 @@
     }
 }
 
+<span class="kw">impl</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">DivBufShared</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">fmt</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
+        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;DivBufShared {{ inner: {:?} }}&quot;</span>, <span class="ident">inner</span>)
+    }
+}
+
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">DivBufShared</span> {
     <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
-        <span class="comment">// if we get here, that means that nobody else has a reference to this</span>
-        <span class="comment">// DivBufShared.  So we don&#39;t have to worry that somebody else will</span>
-        <span class="comment">// reference self.inner while we&#39;re Drop&#39;ing it.</span>
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>) <span class="op">==</span> <span class="number">0</span> { 
-            <span class="kw">unsafe</span> {
-                <span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="self">self</span>.<span class="ident">inner</span>);
+        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">sharers</span>.<span class="ident">fetch_sub</span>(<span class="number">1</span>, <span class="ident">Release</span>) <span class="op">==</span> <span class="number">1</span> {
+            <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>) <span class="op">==</span> <span class="number">0</span> {
+                <span class="comment">// See the comments in std::sync::Arc::drop for why the fence is</span>
+                <span class="comment">// required.</span>
+                <span class="ident">atomic</span>::<span class="ident">fence</span>(<span class="ident">Acquire</span>);
+                <span class="kw">unsafe</span> {
+                    <span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="self">self</span>.<span class="ident">inner</span>);
+                }
             }
-        } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="ident">thread</span>::<span class="ident">panicking</span>() {
-                <span class="comment">// Leaking memory while panicking is preferable to a</span>
-                <span class="comment">// double-panic, which makes debugging hard</span>
-                <span class="kw">return</span>;
-            }
-            <span class="comment">// We don&#39;t currently allow dropping a DivBufShared until all of its</span>
-            <span class="comment">// child DivBufs and DivBufMuts have been dropped, too.</span>
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Dropping a DivBufShared that&#39;s still referenced&quot;</span>);
         }
     }
 }
@@ -1344,9 +1358,11 @@
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">DivBufShared</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">src</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">DivBufShared</span> {
         <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">sharers</span> <span class="op">=</span> <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">1</span>);
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Inner</span> {
             <span class="ident">vec</span>: <span class="ident">src</span>,
-            <span class="ident">refcount</span>: <span class="ident">rc</span>
+            <span class="ident">accessors</span>: <span class="ident">rc</span>,
+            <span class="ident">sharers</span>: <span class="ident">sharers</span>
         });
         <span class="ident">DivBufShared</span>{
             <span class="ident">inner</span>: <span class="ident">Box</span>::<span class="ident">into_raw</span>(<span class="ident">inner</span>)
@@ -1413,8 +1429,8 @@
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">begin</span> <span class="op">&lt;=</span> <span class="ident">end</span>);
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">end</span> <span class="op">&lt;=</span> <span class="self">self</span>.<span class="ident">len</span>);
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">let</span> <span class="ident">old_refcount</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_refcount</span> <span class="op">&amp;</span> <span class="ident">READER_MASK</span> <span class="op">&gt;</span> <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">old_accessors</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
+        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_accessors</span> <span class="op">&amp;</span> <span class="ident">READER_MASK</span> <span class="op">&gt;</span> <span class="number">0</span>);
         <span class="ident">DivBuf</span> {
             <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>,
             <span class="ident">begin</span>: <span class="self">self</span>.<span class="ident">begin</span> <span class="op">+</span> <span class="ident">begin</span>,
@@ -1471,8 +1487,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">split_off</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">at</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">DivBuf</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">at</span> <span class="op">&lt;=</span> <span class="self">self</span>.<span class="ident">len</span>, <span class="string">&quot;Can&#39;t split past the end&quot;</span>);
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">let</span> <span class="ident">old_refcount</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_refcount</span> <span class="op">&amp;</span> <span class="ident">READER_MASK</span> <span class="op">&gt;</span> <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">old_accessors</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
+        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_accessors</span> <span class="op">&amp;</span> <span class="ident">READER_MASK</span> <span class="op">&gt;</span> <span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">right_half</span> <span class="op">=</span> <span class="ident">DivBuf</span> {
             <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>,
             <span class="ident">begin</span>: <span class="self">self</span>.<span class="ident">begin</span> <span class="op">+</span> <span class="ident">at</span>,
@@ -1501,8 +1517,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">split_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">at</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">DivBuf</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">at</span> <span class="op">&lt;=</span> <span class="self">self</span>.<span class="ident">len</span>, <span class="string">&quot;Can&#39;t split past the end&quot;</span>);
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">let</span> <span class="ident">old_refcount</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_refcount</span> <span class="op">&amp;</span> <span class="ident">READER_MASK</span> <span class="op">&gt;</span> <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">old_accessors</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
+        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_accessors</span> <span class="op">&amp;</span> <span class="ident">READER_MASK</span> <span class="op">&gt;</span> <span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">left_half</span> <span class="op">=</span> <span class="ident">DivBuf</span> {
             <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>,
             <span class="ident">begin</span>: <span class="self">self</span>.<span class="ident">begin</span>,
@@ -1527,7 +1543,7 @@
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_mut</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DivBufMut</span>, <span class="ident">DivBuf</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">compare_and_swap</span>(<span class="number">1</span>, <span class="ident">ONE_WRITER</span>, <span class="ident">AcqRel</span>) <span class="op">==</span> <span class="number">1</span> {
+        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">compare_and_swap</span>(<span class="number">1</span>, <span class="ident">ONE_WRITER</span>, <span class="ident">AcqRel</span>) <span class="op">==</span> <span class="number">1</span> {
             <span class="kw">let</span> <span class="ident">mutable_self</span> <span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="ident">DivBufMut</span> {
                 <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>,
                 <span class="ident">begin</span>: <span class="self">self</span>.<span class="ident">begin</span>,
@@ -1608,7 +1624,14 @@
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">DivBuf</span> {
     <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_sub</span>(<span class="number">1</span>, <span class="ident">Release</span>);
+        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_sub</span>(<span class="number">1</span>, <span class="ident">Release</span>) <span class="op">==</span> <span class="number">1</span> {
+            <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">sharers</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>) <span class="op">==</span> <span class="number">0</span> {
+                <span class="ident">atomic</span>::<span class="ident">fence</span>(<span class="ident">Acquire</span>);
+                <span class="kw">unsafe</span> {
+                    <span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="self">self</span>.<span class="ident">inner</span>);
+                }
+            }
+        }
     }
 }
 
@@ -1682,8 +1705,8 @@
         <span class="comment">// other DivButMuts that overlap with this one, so it&#39;s safe to create a</span>
         <span class="comment">// DivBuf whose range is restricted to what self covers</span>
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">let</span> <span class="ident">old_refcount</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_refcount</span> <span class="op">&gt;&gt;</span> <span class="ident">WRITER_SHIFT</span> <span class="op">&gt;</span> <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">old_accessors</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
+        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_accessors</span> <span class="op">&gt;&gt;</span> <span class="ident">WRITER_SHIFT</span> <span class="op">&gt;</span> <span class="number">0</span>);
         <span class="ident">DivBuf</span> {
             <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>,
             <span class="ident">begin</span>: <span class="self">self</span>.<span class="ident">begin</span>,
@@ -1730,7 +1753,7 @@
         <span class="self">self</span>.<span class="ident">begin</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">len</span> <span class="op">==</span> <span class="ident">oldlen</span>
     }
 
-    <span class="doccomment">/// Get the length of this `DivBuf`, _not_ the underlying storage</span>
+    <span class="doccomment">/// Get the length of this `DivBufMut`, _not_ the underlying storage</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">len</span>
     }
@@ -1771,8 +1794,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">split_off</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">at</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">DivBufMut</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">at</span> <span class="op">&lt;=</span> <span class="self">self</span>.<span class="ident">len</span>, <span class="string">&quot;Can&#39;t split past the end&quot;</span>);
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">let</span> <span class="ident">old_refcount</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_add</span>(<span class="ident">ONE_WRITER</span>, <span class="ident">Relaxed</span>);
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_refcount</span> <span class="op">&gt;&gt;</span> <span class="ident">WRITER_SHIFT</span> <span class="op">&gt;</span> <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">old_accessors</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_add</span>(<span class="ident">ONE_WRITER</span>, <span class="ident">Relaxed</span>);
+        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_accessors</span> <span class="op">&gt;&gt;</span> <span class="ident">WRITER_SHIFT</span> <span class="op">&gt;</span> <span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">right_half</span> <span class="op">=</span> <span class="ident">DivBufMut</span> {
             <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>,
             <span class="ident">begin</span>: <span class="self">self</span>.<span class="ident">begin</span> <span class="op">+</span> <span class="ident">at</span>,
@@ -1801,8 +1824,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">split_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">at</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">DivBufMut</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">at</span> <span class="op">&lt;=</span> <span class="self">self</span>.<span class="ident">len</span>, <span class="string">&quot;Can&#39;t split past the end&quot;</span>);
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="kw">let</span> <span class="ident">old_refcount</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_add</span>(<span class="ident">ONE_WRITER</span>, <span class="ident">Relaxed</span>);
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_refcount</span> <span class="op">&gt;&gt;</span> <span class="ident">WRITER_SHIFT</span> <span class="op">&gt;</span> <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">old_accessors</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_add</span>(<span class="ident">ONE_WRITER</span>, <span class="ident">Relaxed</span>);
+        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="ident">old_accessors</span> <span class="op">&gt;&gt;</span> <span class="ident">WRITER_SHIFT</span> <span class="op">&gt;</span> <span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">left_half</span> <span class="op">=</span> <span class="ident">DivBufMut</span> {
             <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>,
             <span class="ident">begin</span>: <span class="self">self</span>.<span class="ident">begin</span>,
@@ -1972,9 +1995,14 @@
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">DivBufMut</span> {
     <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
-        <span class="comment">// if we get here, we know that:</span>
-        <span class="comment">// * nobody else has a reference to this DivBufMut</span>
-        <span class="ident">inner</span>.<span class="ident">refcount</span>.<span class="ident">fetch_sub</span>(<span class="ident">ONE_WRITER</span>, <span class="ident">Release</span>);
+        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_sub</span>(<span class="ident">ONE_WRITER</span>, <span class="ident">Release</span>) <span class="op">==</span> <span class="ident">ONE_WRITER</span> {
+            <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">sharers</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>) <span class="op">==</span> <span class="number">0</span> {
+                <span class="ident">atomic</span>::<span class="ident">fence</span>(<span class="ident">Acquire</span>);
+                <span class="kw">unsafe</span> {
+                    <span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="self">self</span>.<span class="ident">inner</span>);
+                }
+            }
+        }
     }
 }
 
