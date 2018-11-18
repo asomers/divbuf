@@ -46,4 +46,4 @@
 
 mod divbuf;
 
-pub use divbuf::{DivBufShared, DivBuf, DivBufMut};
+pub use divbuf::{Chunks, ChunksMut, DivBufShared, DivBuf, DivBufMut};
