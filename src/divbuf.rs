@@ -222,7 +222,7 @@ impl DivBufShared {
         inner.vec.len()
     }
 
-    #[deprecated(since = "0.4.0", note = "use try_const instead")]
+    #[deprecated(since = "0.3.1", note = "use try_const instead")]
     #[doc(hidden)]
     pub fn try(&self) -> Result<DivBuf, &'static str> {
         self.try_const()
