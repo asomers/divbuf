@@ -1,4 +1,4 @@
-## [Unreleased] - ReleaseDate
+## [0.3.1] - 2018-12-08
 ### Changed
 - `DivBufShared::try` has been replaced with `try_const` since `try` is a
   reserved word in Rust 2018.
