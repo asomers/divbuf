@@ -36,7 +36,7 @@
 //!     let mut color_buffer = right_half.split_to(5);
 //!     color_buffer[..].copy_from_slice(&b"Black"[..]);
 //! }
-//! let db = dbs.try().unwrap();
+//! let db = dbs.try_const().unwrap();
 //! assert_eq!(db, b"Some Black Stuff"[..]);
 //! ```
 //!

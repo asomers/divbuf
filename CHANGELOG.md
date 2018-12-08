@@ -1,3 +1,9 @@
+## [Unreleased] - ReleaseDate
+### Changed
+- `DivBufShared::try` has been replaced with `try_const` since `try` is a
+  reserved word in Rust 2018.
+  https://github.com/asomers/divbuf/pull/5
+
 ## [0.3.0] - 2018-10-27
 ### Added
 - `DivBuf`s and `DivBufMut`s now share ownership of the data, so they can live

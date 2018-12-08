@@ -128,7 +128,7 @@ pub struct DivBufShared {
 /// ```
 /// # use divbuf::*;
 /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-/// let mut db0 : DivBuf = dbs.try().unwrap();
+/// let mut db0 : DivBuf = dbs.try_const().unwrap();
 /// assert_eq!(db0, [1, 2, 3, 4, 5, 6][..]);
 /// ```
 ///
@@ -138,7 +138,7 @@ pub struct DivBufShared {
 /// ```compile_fail
 /// # use divbuf::*;
 /// let dbs = DivBufShared::from(vec![1, 2, 3]);
-/// let mut db = dbs.try().unwrap();
+/// let mut db = dbs.try_const().unwrap();
 /// db[0] = 9;
 /// ```
 ///
@@ -222,6 +222,12 @@ impl DivBufShared {
         inner.vec.len()
     }
 
+    #[deprecated(since = "0.4.0", note = "use try_const instead")]
+    #[doc(hidden)]
+    pub fn try(&self) -> Result<DivBuf, &'static str> {
+        self.try_const()
+    }
+
     /// Try to create a read-only [`DivBuf`] that refers to the entirety of this
     /// buffer.  Will fail if there are any [`DivBufMut`] objects referring to
     /// this buffer.
@@ -230,12 +236,12 @@ impl DivBufShared {
     /// ```
     /// # use divbuf::*;
     /// let dbs = DivBufShared::with_capacity(4096);
-    /// let db = dbs.try().unwrap();
+    /// let db = dbs.try_const().unwrap();
     /// ```
     ///
     /// [`DivBuf`]: struct.DivBuf.html
     /// [`DivBufMut`]: struct.DivBufMut.html
-    pub fn try(&self) -> Result<DivBuf, &'static str> {
+    pub fn try_const(&self) -> Result<DivBuf, &'static str> {
         let inner = unsafe { &*self.inner };
         if inner.accessors.fetch_add(1, Acquire) >> WRITER_SHIFT != 0 {
             inner.accessors.fetch_sub(1, Relaxed);
@@ -353,7 +359,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     /// let dbs = DivBufShared::from(vec![0, 1, 2, 3, 4, 5, 6, 7]);
-    /// let db = dbs.try().unwrap();
+    /// let db = dbs.try_const().unwrap();
     /// let mut iter = db.into_chunks(3);
     /// assert_eq!(&iter.next().unwrap()[..], &[0, 1, 2][..]);
     /// assert_eq!(&iter.next().unwrap()[..], &[3, 4, 5][..]);
@@ -381,7 +387,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    /// let db0 = dbs.try().unwrap();
+    /// let db0 = dbs.try_const().unwrap();
     /// let db1 = db0.slice(1, 4);
     /// assert_eq!(db1, [2, 3, 4][..]);
     /// ```
@@ -404,7 +410,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    /// let db0 = dbs.try().unwrap();
+    /// let db0 = dbs.try_const().unwrap();
     /// let db1 = db0.slice_from(3);
     /// assert_eq!(db1, [4, 5, 6][..]);
     /// ```
@@ -419,7 +425,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    /// let db0 = dbs.try().unwrap();
+    /// let db0 = dbs.try_const().unwrap();
     /// let db1 = db0.slice_to(3);
     /// assert_eq!(db1, [1, 2, 3][..]);
     /// ```
@@ -439,7 +445,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    /// let mut db0 = dbs.try().unwrap();
+    /// let mut db0 = dbs.try_const().unwrap();
     /// let db1 = db0.split_off(4);
     /// assert_eq!(db0, [1, 2, 3, 4][..]);
     /// assert_eq!(db1, [5, 6][..]);
@@ -469,7 +475,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    /// let mut db0 = dbs.try().unwrap();
+    /// let mut db0 = dbs.try_const().unwrap();
     /// let db1 = db0.split_to(4);
     /// assert_eq!(db0, [5, 6][..]);
     /// assert_eq!(db1, [1, 2, 3, 4][..]);
@@ -498,7 +504,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     /// let dbs = DivBufShared::with_capacity(4096);
-    /// let db = dbs.try().unwrap();
+    /// let db = dbs.try_const().unwrap();
     /// db.try_mut().unwrap();
     /// ```
     pub fn try_mut(self) -> Result<DivBufMut, DivBuf> {
@@ -526,7 +532,7 @@ impl DivBuf {
     /// ```
     /// # use divbuf::*;
     /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    /// let mut db0 = dbs.try().unwrap();
+    /// let mut db0 = dbs.try_const().unwrap();
     /// let db1 = db0.split_off(4);
     /// db0.unsplit(db1);
     /// assert_eq!(db0, [1, 2, 3, 4, 5, 6][..]);
