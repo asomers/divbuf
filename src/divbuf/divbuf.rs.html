@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/divbuf.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>divbuf.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">   1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/divbuf.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>divbuf.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">   1</span>
 <span id="2">   2</span>
 <span id="3">   3</span>
 <span id="4">   4</span>
@@ -1037,6 +1037,12 @@
 <span id="1037">1037</span>
 <span id="1038">1038</span>
 <span id="1039">1039</span>
+<span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
 </pre><pre class="rust ">
 <span class="comment">// vim: tw=80</span>
 
@@ -1168,7 +1174,7 @@
 <span class="doccomment">/// ```</span>
 <span class="doccomment">/// # use divbuf::*;</span>
 <span class="doccomment">/// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);</span>
-<span class="doccomment">/// let mut db0 : DivBuf = dbs.try().unwrap();</span>
+<span class="doccomment">/// let mut db0 : DivBuf = dbs.try_const().unwrap();</span>
 <span class="doccomment">/// assert_eq!(db0, [1, 2, 3, 4, 5, 6][..]);</span>
 <span class="doccomment">/// ```</span>
 <span class="doccomment">///</span>
@@ -1178,7 +1184,7 @@
 <span class="doccomment">/// ```compile_fail</span>
 <span class="doccomment">/// # use divbuf::*;</span>
 <span class="doccomment">/// let dbs = DivBufShared::from(vec![1, 2, 3]);</span>
-<span class="doccomment">/// let mut db = dbs.try().unwrap();</span>
+<span class="doccomment">/// let mut db = dbs.try_const().unwrap();</span>
 <span class="doccomment">/// db[0] = 9;</span>
 <span class="doccomment">/// ```</span>
 <span class="doccomment">///</span>
@@ -1262,6 +1268,12 @@
         <span class="ident">inner</span>.<span class="ident">vec</span>.<span class="ident">len</span>()
     }
 
+    <span class="attribute">#[<span class="ident">deprecated</span>(<span class="ident">since</span> <span class="op">=</span> <span class="string">&quot;0.3.1&quot;</span>, <span class="ident">note</span> <span class="op">=</span> <span class="string">&quot;use try_const instead&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DivBuf</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">try_const</span>()
+    }
+
     <span class="doccomment">/// Try to create a read-only [`DivBuf`] that refers to the entirety of this</span>
     <span class="doccomment">/// buffer.  Will fail if there are any [`DivBufMut`] objects referring to</span>
     <span class="doccomment">/// this buffer.</span>
@@ -1270,12 +1282,12 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use divbuf::*;</span>
     <span class="doccomment">/// let dbs = DivBufShared::with_capacity(4096);</span>
-    <span class="doccomment">/// let db = dbs.try().unwrap();</span>
+    <span class="doccomment">/// let db = dbs.try_const().unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// [`DivBuf`]: struct.DivBuf.html</span>
     <span class="doccomment">/// [`DivBufMut`]: struct.DivBufMut.html</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DivBuf</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_const</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DivBuf</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span> };
         <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Acquire</span>) <span class="op">&gt;&gt;</span> <span class="ident">WRITER_SHIFT</span> <span class="op">!=</span> <span class="number">0</span> {
             <span class="ident">inner</span>.<span class="ident">accessors</span>.<span class="ident">fetch_sub</span>(<span class="number">1</span>, <span class="ident">Relaxed</span>);
@@ -1393,7 +1405,7 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use divbuf::*;</span>
     <span class="doccomment">/// let dbs = DivBufShared::from(vec![0, 1, 2, 3, 4, 5, 6, 7]);</span>
-    <span class="doccomment">/// let db = dbs.try().unwrap();</span>
+    <span class="doccomment">/// let db = dbs.try_const().unwrap();</span>
     <span class="doccomment">/// let mut iter = db.into_chunks(3);</span>
     <span class="doccomment">/// assert_eq!(&amp;iter.next().unwrap()[..], &amp;[0, 1, 2][..]);</span>
     <span class="doccomment">/// assert_eq!(&amp;iter.next().unwrap()[..], &amp;[3, 4, 5][..]);</span>
@@ -1421,7 +1433,7 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use divbuf::*;</span>
     <span class="doccomment">/// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);</span>
-    <span class="doccomment">/// let db0 = dbs.try().unwrap();</span>
+    <span class="doccomment">/// let db0 = dbs.try_const().unwrap();</span>
     <span class="doccomment">/// let db1 = db0.slice(1, 4);</span>
     <span class="doccomment">/// assert_eq!(db1, [2, 3, 4][..]);</span>
     <span class="doccomment">/// ```</span>
@@ -1444,7 +1456,7 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use divbuf::*;</span>
     <span class="doccomment">/// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);</span>
-    <span class="doccomment">/// let db0 = dbs.try().unwrap();</span>
+    <span class="doccomment">/// let db0 = dbs.try_const().unwrap();</span>
     <span class="doccomment">/// let db1 = db0.slice_from(3);</span>
     <span class="doccomment">/// assert_eq!(db1, [4, 5, 6][..]);</span>
     <span class="doccomment">/// ```</span>
@@ -1459,7 +1471,7 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use divbuf::*;</span>
     <span class="doccomment">/// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);</span>
-    <span class="doccomment">/// let db0 = dbs.try().unwrap();</span>
+    <span class="doccomment">/// let db0 = dbs.try_const().unwrap();</span>
     <span class="doccomment">/// let db1 = db0.slice_to(3);</span>
     <span class="doccomment">/// assert_eq!(db1, [1, 2, 3][..]);</span>
     <span class="doccomment">/// ```</span>
@@ -1479,7 +1491,7 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use divbuf::*;</span>
     <span class="doccomment">/// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);</span>
-    <span class="doccomment">/// let mut db0 = dbs.try().unwrap();</span>
+    <span class="doccomment">/// let mut db0 = dbs.try_const().unwrap();</span>
     <span class="doccomment">/// let db1 = db0.split_off(4);</span>
     <span class="doccomment">/// assert_eq!(db0, [1, 2, 3, 4][..]);</span>
     <span class="doccomment">/// assert_eq!(db1, [5, 6][..]);</span>
@@ -1509,7 +1521,7 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use divbuf::*;</span>
     <span class="doccomment">/// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);</span>
-    <span class="doccomment">/// let mut db0 = dbs.try().unwrap();</span>
+    <span class="doccomment">/// let mut db0 = dbs.try_const().unwrap();</span>
     <span class="doccomment">/// let db1 = db0.split_to(4);</span>
     <span class="doccomment">/// assert_eq!(db0, [5, 6][..]);</span>
     <span class="doccomment">/// assert_eq!(db1, [1, 2, 3, 4][..]);</span>
@@ -1538,7 +1550,7 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use divbuf::*;</span>
     <span class="doccomment">/// let dbs = DivBufShared::with_capacity(4096);</span>
-    <span class="doccomment">/// let db = dbs.try().unwrap();</span>
+    <span class="doccomment">/// let db = dbs.try_const().unwrap();</span>
     <span class="doccomment">/// db.try_mut().unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_mut</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DivBufMut</span>, <span class="ident">DivBuf</span><span class="op">&gt;</span> {
@@ -1566,7 +1578,7 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use divbuf::*;</span>
     <span class="doccomment">/// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);</span>
-    <span class="doccomment">/// let mut db0 = dbs.try().unwrap();</span>
+    <span class="doccomment">/// let mut db0 = dbs.try_const().unwrap();</span>
     <span class="doccomment">/// let db1 = db0.split_off(4);</span>
     <span class="doccomment">/// db0.unsplit(db1);</span>
     <span class="doccomment">/// assert_eq!(db0, [1, 2, 3, 4, 5, 6][..]);</span>

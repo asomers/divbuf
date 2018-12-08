@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `divbuf` crate."><meta name="keywords" content="rust, rustlang, rust-lang, divbuf"><title>divbuf - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><p class='location'>Crate divbuf</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'divbuf', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/divbuf/lib.rs.html#3-49' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>divbuf</a></span></h1><div class='docblock'><p>Recursively divisible buffer class</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `divbuf` crate."><meta name="keywords" content="rust, rustlang, rust-lang, divbuf"><title>divbuf - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><p class='location'>Crate divbuf</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all divbuf's items</p></a><div class="block items"><ul><li><a href="#structs">Structs</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'divbuf', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/divbuf/lib.rs.html#3-49' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>divbuf</a></span></h1><div class='docblock'><p>Recursively divisible buffer class</p>
 <p>The <code>divbuf</code> crate provides a buffer structure
 (<a href="struct.DivBufShared.html"><code>DivBufShared</code></a>) that can be efficiently and
 safely divided into multiple smaller buffers.  Each child buffer can be
@@ -33,10 +33,28 @@ include them, and is optimized for working with large arrays.</li>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">color_buffer</span> <span class="op">=</span> <span class="ident">right_half</span>.<span class="ident">split_to</span>(<span class="number">5</span>);
     <span class="ident">color_buffer</span>[..].<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="string">b&quot;Black&quot;</span>[..]);
 }
-<span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">dbs</span>.<span class="ident">try</span>().<span class="ident">unwrap</span>();
+<span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">dbs</span>.<span class="ident">try_const</span>().<span class="ident">unwrap</span>();
 <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">db</span>, <span class="string">b&quot;Some Black Stuff&quot;</span>[..]);</pre>
 </div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Chunks.html"
+                                  title='struct divbuf::Chunks'>Chunks</a></td>
+                           <td class='docblock-short'>
+                                <p>The return type of
+<a href="struct.DivBuf.html#method.into_chunks"><code>DivBuf::into_chunks</code></a></p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.ChunksMut.html"
+                                  title='struct divbuf::ChunksMut'>ChunksMut</a></td>
+                           <td class='docblock-short'>
+                                <p>The return type of
+<a href="struct.DivBufMut.html#method.into_chunks"><code>DivBufMut::into_chunks</code></a></p>
+
+                           </td>
+                       </tr>
                        <tr class=' module-item'>
                            <td><a class="struct" href="struct.DivBuf.html"
                                   title='struct divbuf::DivBuf'>DivBuf</a></td>
