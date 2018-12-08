@@ -18,7 +18,7 @@ use divbuf::*;
 #[test]
 pub fn test_chunks_iter() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let db = dbs.try().unwrap();
+    let db = dbs.try_const().unwrap();
     let mut chunks = db.into_chunks(3);
     assert_eq!(&chunks.next().unwrap()[..], &[1, 2, 3][..]);
     assert_eq!(&chunks.next().unwrap()[..], &[4, 5, 6][..]);
@@ -29,25 +29,37 @@ pub fn test_chunks_iter() {
 #[should_panic]
 pub fn test_chunks_zero() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let db = dbs.try().unwrap();
+    let db = dbs.try_const().unwrap();
     db.into_chunks(0);
 }
 
 #[test]
 pub fn test_chunks_size_hint() {
     let dbs = DivBufShared::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    assert_eq!(dbs.try().unwrap().into_chunks(1).size_hint(), (12, Some(12)));
-    assert_eq!(dbs.try().unwrap().into_chunks(2).size_hint(), (6, Some(6)));
-    assert_eq!(dbs.try().unwrap().into_chunks(3).size_hint(), (4, Some(4)));
-    assert_eq!(dbs.try().unwrap().into_chunks(4).size_hint(), (3, Some(3)));
-    assert_eq!(dbs.try().unwrap().into_chunks(5).size_hint(), (3, Some(3)));
-    assert_eq!(dbs.try().unwrap().into_chunks(6).size_hint(), (2, Some(2)));
-    assert_eq!(dbs.try().unwrap().into_chunks(7).size_hint(), (2, Some(2)));
-    assert_eq!(dbs.try().unwrap().into_chunks(8).size_hint(), (2, Some(2)));
-    assert_eq!(dbs.try().unwrap().into_chunks(9).size_hint(), (2, Some(2)));
-    assert_eq!(dbs.try().unwrap().into_chunks(10).size_hint(), (2, Some(2)));
-    assert_eq!(dbs.try().unwrap().into_chunks(11).size_hint(), (2, Some(2)));
-    assert_eq!(dbs.try().unwrap().into_chunks(12).size_hint(), (1, Some(1)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(1).size_hint(),
+               (12, Some(12)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(2).size_hint(),
+               (6, Some(6)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(3).size_hint(),
+               (4, Some(4)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(4).size_hint(),
+               (3, Some(3)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(5).size_hint(),
+               (3, Some(3)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(6).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(7).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(8).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(9).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(10).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(11).size_hint(),
+               (2, Some(2)));
+    assert_eq!(dbs.try_const().unwrap().into_chunks(12).size_hint(),
+               (1, Some(1)));
 }
 
 //
@@ -164,12 +176,12 @@ pub fn test_divbufshared_sync() {
 }
 
 #[test]
-pub fn test_divbufshared_try() {
+pub fn test_divbufshared_try_const() {
     let dbs = DivBufShared::with_capacity(4096);
     // Create an initial DivBuf
-    let _db0 = dbs.try().unwrap();
+    let _db0 = dbs.try_const().unwrap();
     // Creating a second is allowed, too
-    let _db1 = dbs.try().unwrap();
+    let _db1 = dbs.try_const().unwrap();
 }
 
 #[test]
@@ -178,7 +190,7 @@ pub fn test_divbufshared_try_after_trymut() {
     // Create an initial DivBufMut
     let _dbm = dbs.try_mut().unwrap();
     // Creating a DivBuf should fail, because there are writers
-    assert!(dbs.try().is_err());
+    assert!(dbs.try_const().is_err());
 }
 
 #[test]
@@ -196,7 +208,7 @@ pub fn test_divbufshared_try_mut() {
 #[test]
 pub fn test_divbuf_as_ref() {
     let dbs = DivBufShared::from(vec![1, 2, 3]);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     let s : &[u8] = db0.as_ref();
     assert_eq!(s, &[1, 2, 3]);
 }
@@ -204,7 +216,7 @@ pub fn test_divbuf_as_ref() {
 #[test]
 pub fn test_divbuf_as_ref_empty() {
     let dbs = DivBufShared::from(vec![]);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     let s : &[u8] = db0.as_ref();
     assert_eq!(s, &[]);
 }
@@ -212,7 +224,7 @@ pub fn test_divbuf_as_ref_empty() {
 #[test]
 pub fn test_divbuf_borrow() {
     let dbs = DivBufShared::from(vec![1, 2, 3]);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     let s : &[u8] = db0.borrow();
     assert_eq!(s, &[1, 2, 3]);
 }
@@ -220,7 +232,7 @@ pub fn test_divbuf_borrow() {
 #[test]
 pub fn test_divbuf_clone() {
     let dbs = DivBufShared::from(vec![1, 2, 3]);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     let mut db1 = db0.clone();
     assert_eq!(db0, db1);
     // We should be able to modify one DivBuf without affecting the other
@@ -231,7 +243,7 @@ pub fn test_divbuf_clone() {
 #[test]
 pub fn test_divbuf_deref() {
     let dbs = DivBufShared::from(vec![1, 2, 3]);
-    let db = dbs.try().unwrap();
+    let db = dbs.try_const().unwrap();
     let slice : &[u8] = &db;
     assert_eq!(slice, &[1, 2, 3]);
 }
@@ -239,7 +251,7 @@ pub fn test_divbuf_deref() {
 #[test]
 pub fn test_divbuf_deref_empty() {
     let dbs = DivBufShared::from(vec![]);
-    let db = dbs.try().unwrap();
+    let db = dbs.try_const().unwrap();
     let slice : &[u8] = &db;
     assert_eq!(slice, &[]);
 }
@@ -248,7 +260,7 @@ pub fn test_divbuf_deref_empty() {
 #[test]
 pub fn test_divbuf_drop_last() {
     let dbs0 = DivBufShared::from(vec![1, 2, 3]);
-    let _db0 = dbs0.try().unwrap();
+    let _db0 = dbs0.try_const().unwrap();
     drop(dbs0);
 }
 
@@ -257,9 +269,9 @@ pub fn test_divbuf_eq() {
     let dbs0 = DivBufShared::from(vec![1, 2, 3]);
     let dbs1 = DivBufShared::from(vec![1, 2, 3]);
     let dbs2 = DivBufShared::from(vec![1, 2]);
-    let db0 = dbs0.try().unwrap();
-    let db1 = dbs1.try().unwrap();
-    let db2 = dbs2.try().unwrap();
+    let db0 = dbs0.try_const().unwrap();
+    let db1 = dbs1.try_const().unwrap();
+    let db2 = dbs2.try_const().unwrap();
     assert_eq!(db0, db1);
     assert_ne!(db0, db2);
 }
@@ -274,11 +286,11 @@ pub fn test_divbuf_from_divbufmut() {
 #[test]
 pub fn test_divbuf_is_empty() {
     let dbs0 = DivBufShared::with_capacity(64);
-    let db0 = dbs0.try().unwrap();
+    let db0 = dbs0.try_const().unwrap();
     assert!(db0.is_empty());
 
     let dbs1 = DivBufShared::from(vec![1]);
-    let db1 = dbs1.try().unwrap();
+    let db1 = dbs1.try_const().unwrap();
     assert!(!db1.is_empty());
 }
 
@@ -293,30 +305,30 @@ pub fn test_divbuf_hash() {
     let v = vec![1, 2, 3, 4, 5, 6];
     let expected = simple_hash(&v);
     let dbs = DivBufShared::from(v);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     assert_eq!(simple_hash(&db0), expected);
 }
 
 #[test]
 pub fn test_divbuf_ord() {
     let dbs = DivBufShared::from(vec![0, 1, 0, 2]);
-    let db0 = dbs.try().unwrap().slice_to(2);
-    let db1 = dbs.try().unwrap().slice_from(2);
+    let db0 = dbs.try_const().unwrap().slice_to(2);
+    let db1 = dbs.try_const().unwrap().slice_from(2);
     assert_eq!(db0.cmp(&db1), Ordering::Less);
 }
 
 #[test]
 pub fn test_divbuf_partial_ord() {
     let dbs = DivBufShared::from(vec![0, 1, 0, 2]);
-    let db0 = dbs.try().unwrap().slice_to(2);
-    let db1 = dbs.try().unwrap().slice_from(2);
+    let db0 = dbs.try_const().unwrap().slice_to(2);
+    let db1 = dbs.try_const().unwrap().slice_from(2);
     assert!(db0 < db1);
 }
 
 #[test]
 pub fn test_divbuf_send() {
     let dbs = DivBufShared::with_capacity(4096);
-    let db = dbs.try().unwrap();
+    let db = dbs.try_const().unwrap();
     thread::spawn(move || {
         let _ = db;
     }).join().unwrap();
@@ -326,10 +338,8 @@ pub fn test_divbuf_send() {
 pub fn test_divbuf_sync() {
     lazy_static! {
         pub static ref DBS: DivBufShared = DivBufShared::from(vec![0; 4096]);
-        pub static ref DB: DivBuf = DBS.try().unwrap();
-        //pub static ref DB: Option<DivBuf> = None;
+        pub static ref DB: DivBuf = DBS.try_const().unwrap();
     }
-    //DB = Some(DBS.try().unwrap());
     let r = &DB;
     thread::spawn(move || {
         let _ = r;
@@ -339,7 +349,7 @@ pub fn test_divbuf_sync() {
 #[test]
 pub fn test_divbuf_slice() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     assert_eq!(db0.slice(0, 0), [][..]);
     assert_eq!(db0.slice(1, 5), [2, 3, 4, 5][..]);
     assert_eq!(db0.slice(1, 1), [][..]);
@@ -351,7 +361,7 @@ pub fn test_divbuf_slice() {
 #[should_panic(expected = "begin <= end")]
 pub fn test_divbuf_slice_backwards() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     db0.slice(1, 0);
 }
 
@@ -359,14 +369,14 @@ pub fn test_divbuf_slice_backwards() {
 #[should_panic(expected = "end <= self.len")]
 pub fn test_divbuf_slice_after_end() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     db0.slice(3, 7);
 }
 
 #[test]
 pub fn test_divbuf_slice_from() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     assert_eq!(db0.slice_from(0), db0);
     assert_eq!(db0.slice_from(3), [4, 5, 6][..]);
 }
@@ -374,7 +384,7 @@ pub fn test_divbuf_slice_from() {
 #[test]
 pub fn test_divbuf_slice_to() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     assert_eq!(db0.slice_to(6), db0);
     assert_eq!(db0.slice_to(3), [1, 2, 3][..]);
 }
@@ -382,7 +392,7 @@ pub fn test_divbuf_slice_to() {
 #[test]
 pub fn test_divbuf_split_off() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let mut db0 = dbs.try().unwrap();
+    let mut db0 = dbs.try_const().unwrap();
     // split in the middle
     let db_mid = db0.split_off(4);
     assert_eq!(db0, [1, 2, 3, 4][..]);
@@ -403,14 +413,14 @@ pub fn test_divbuf_split_off() {
 #[should_panic(expected = "Can't split past the end")]
 pub fn test_divbuf_split_off_past_the_end() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let mut db0 = dbs.try().unwrap();
+    let mut db0 = dbs.try_const().unwrap();
     db0.split_off(7);
 }
 
 #[test]
 pub fn test_divbuf_split_to() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let mut db0 = dbs.try().unwrap();
+    let mut db0 = dbs.try_const().unwrap();
     // split in the middle
     let mut db_left = db0.split_to(4);
     assert_eq!(db_left, [1, 2, 3, 4][..]);
@@ -431,16 +441,16 @@ pub fn test_divbuf_split_to() {
 #[should_panic(expected = "Can't split past the end")]
 pub fn test_divbuf_split_to_past_the_end() {
     let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let mut db0 = dbs.try().unwrap();
+    let mut db0 = dbs.try_const().unwrap();
     db0.split_to(7);
 }
 
 #[test]
 pub fn test_divbuf_trymut() {
     let dbs = DivBufShared::with_capacity(64);
-    let mut db0 = dbs.try().unwrap();
+    let mut db0 = dbs.try_const().unwrap();
     db0 = {
-        let db1 = dbs.try().unwrap();
+        let db1 = dbs.try_const().unwrap();
         // When multiple DivBufs are active, none can be upgraded
         let db2 = db0.try_mut();
         assert!(db2.is_err());
@@ -455,7 +465,7 @@ pub fn test_divbuf_trymut() {
 #[test]
 pub fn test_divbuf_unsplit() {
     let dbs0 = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
-    let mut db0 = dbs0.try().unwrap();
+    let mut db0 = dbs0.try_const().unwrap();
     {
         // split in the middle
         let db_mid = db0.split_off(4);
@@ -482,7 +492,7 @@ pub fn test_divbuf_unsplit() {
         // unsplit should fail for unrelated DivBufs
         let dbs1 = DivBufShared::from(vec![7, 8, 9]);
         let mut db_end = db0.slice_from(4);
-        let db_unrelated = dbs1.try().unwrap();
+        let db_unrelated = dbs1.try_const().unwrap();
         assert!(db_end.unsplit(db_unrelated).is_err());
     }
 }
@@ -522,7 +532,7 @@ pub fn test_divbufmut_borrowmut() {
         let s : &mut [u8] = dbm0.borrow_mut();
         s[0] = 9;
     }
-    let db0 = dbs.try().unwrap();
+    let db0 = dbs.try_const().unwrap();
     let slice : &[u8] = &db0;
     assert_eq!(slice, &[9, 2, 3]);
 }
@@ -589,7 +599,7 @@ pub fn test_divbufmut_extend() {
         dbm.extend([4, 5, 6].iter());
     }
     // verify that dbs.inner.vec was extended
-    let db = dbs.try().unwrap();
+    let db = dbs.try_const().unwrap();
     let slice : &[u8] = &db;
     assert_eq!(slice, &[1, 2, 3, 4, 5, 6]);
 }
@@ -691,9 +701,7 @@ pub fn test_divbufmut_sync() {
     lazy_static! {
         pub static ref DBS: DivBufShared = DivBufShared::from(vec![0; 4096]);
         pub static ref DBM: DivBufMut = DBS.try_mut().unwrap();
-        //pub static ref DB: Option<DivBuf> = None;
     }
-    //DB = Some(DBS.try().unwrap());
     let r = &DBM;
     thread::spawn(move || {
         let _ = r;
@@ -770,7 +778,7 @@ pub fn test_divbufmut_try_extend() {
 
     // verify that dbs.inner.vec was extended the first time, but not the
     // second.
-    let db = dbs.try().unwrap();
+    let db = dbs.try_const().unwrap();
     assert_eq!(db, [1, 2, 3, 4, 5, 6][..]);
 }
 

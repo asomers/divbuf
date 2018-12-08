@@ -17,7 +17,7 @@ fn readfunc() {
     let mut losses: u64 = 0;
     let mut wins: u64 = 0;
     while !SHUTDOWN.load(Relaxed) {
-        if let Ok(db) = (DBS).try() {
+        if let Ok(db) = (DBS).try_const() {
             let mut db0 = db.slice(0, 1024);
             let db1 = db.slice(1024, 2048);
             db0.unsplit(db1).unwrap();
