@@ -283,6 +283,21 @@ impl DivBufShared {
         }
     }
 
+    /// Create a new DivBufShared with an uninitialized buffer of specified
+    /// length.
+    ///
+    /// # Safety
+    ///
+    /// This is safe in the sense that it cannot segfault or cause undefined
+    /// behavior, but it does allow the caller to access unintialized memory.
+    /// Think of it as an ultra-low-quality random number generator.
+    pub fn uninitialized(capacity: usize) -> Self {
+        let mut v = Vec::<u8>::with_capacity(capacity);
+        // safe because all possible byte patterns for u8 are valid
+        unsafe { v.set_len(capacity) };
+        Self::from(v)
+    }
+
     /// Creates a new, empty, `DivBufShared` with a specified capacity.
     ///
     /// After constructing a `DivBufShared` this way, it can only be populated

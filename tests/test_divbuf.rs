@@ -202,6 +202,14 @@ pub fn test_divbufshared_try_mut() {
     assert!(dbs.try_mut().is_err());
 }
 
+#[test]
+pub fn test_divbufshared_uninitialized() {
+    let cap = 4096;
+    let dbs = DivBufShared::uninitialized(cap);
+    assert_eq!(dbs.capacity(), cap);
+    assert_eq!(dbs.len(), cap);
+}
+
 //
 // DivBuf methods
 //
