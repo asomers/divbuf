@@ -1,3 +1,9 @@
+## [Unreleased] - RelaseDate
+### Added
+- `DivBufShared::uninitialized` creates a DivBufShared with an uninitialized
+  buffer.
+  https://github.com/asomers/divbuf/pull/6
+
 ## [0.3.1] - 2018-12-08
 ### Changed
 - `DivBufShared::try` has been replaced with `try_const` since `try` is a
