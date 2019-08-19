@@ -45,3 +45,17 @@ codecov_task:
     - cargo kcov --verbose -- --include-pattern='divbuf/src'
     - bash <(curl -s https://codecov.io/bash)
   before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+minver_task:
+  name: minver
+  depends_on:
+    - test
+  matrix:
+    - container:
+       image: rustlang/rust:nightly
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+  test_script:
+    - cargo update -Zminimal-versions
+    - cargo test
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
