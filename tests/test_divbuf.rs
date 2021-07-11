@@ -873,9 +873,10 @@ pub fn test_divbufmut_unsplit() {
 
 #[test]
 pub fn test_divbufmut_write() {
+    const MSG: &[u8] = b"ABCD";
     let dbs0 = DivBufShared::with_capacity(0);
     let mut dbm0 = dbs0.try_mut().unwrap();
-    dbm0.write("ABCD".as_bytes()).unwrap();
+    assert_eq!(MSG.len(), dbm0.write(MSG).unwrap());
     assert_eq!(&dbm0[..], &[65u8, 66u8, 67u8, 68u8][..])
 }
 
@@ -907,7 +908,7 @@ pub fn test_divbufmut_write_all_nonterminal() {
 pub fn test_divbufmut_flush() {
     let dbs0 = DivBufShared::with_capacity(0);
     let mut dbm0 = dbs0.try_mut().unwrap();
-    dbm0.write("ABCD".as_bytes()).unwrap();
+    dbm0.write_all("ABCD".as_bytes()).unwrap();
     dbm0.flush().unwrap();
     assert_eq!(&dbm0[..], &[65u8, 66u8, 67u8, 68u8][..])
 }

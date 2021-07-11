@@ -29,7 +29,7 @@ pub struct Chunks {
 
 impl Chunks {
     fn new(db: DivBuf, chunksize: usize) -> Self {
-        Chunks {db: db, chunksize: chunksize}
+        Chunks {db, chunksize}
     }
 }
 
@@ -66,7 +66,7 @@ pub struct ChunksMut {
 
 impl ChunksMut {
     fn new(db: DivBufMut, chunksize: usize) -> Self {
-        ChunksMut {db: db, chunksize: chunksize}
+        ChunksMut {db, chunksize}
     }
 }
 
@@ -271,7 +271,9 @@ impl DivBufShared {
     /// [`DivBufMut`]: struct.DivBufMut.html
     pub fn try_mut(&self) -> Result<DivBufMut, &'static str> {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.compare_and_swap(0, ONE_WRITER, AcqRel) == 0 {
+        if inner.accessors.compare_exchange(0, ONE_WRITER, AcqRel, Acquire)
+            .is_ok()
+        {
             let l = inner.vec.len();
             Ok(DivBufMut {
                 inner: self.inner,
@@ -317,14 +319,14 @@ impl Debug for DivBufShared {
 impl Drop for DivBufShared {
     fn drop(&mut self) {
         let inner = unsafe { &*self.inner };
-        if inner.sharers.fetch_sub(1, Release) == 1 {
-            if inner.accessors.load(Relaxed) == 0 {
-                // See the comments in std::sync::Arc::drop for why the fence is
-                // required.
-                atomic::fence(Acquire);
-                unsafe {
-                    Box::from_raw(self.inner);
-                }
+        if inner.sharers.fetch_sub(1, Release) == 1 &&
+            inner.accessors.load(Relaxed) == 0
+        {
+            // See the comments in std::sync::Arc::drop for why the fence is
+            // required.
+            atomic::fence(Acquire);
+            unsafe {
+                Box::from_raw(self.inner);
             }
         }
     }
@@ -343,7 +345,7 @@ impl From<Vec<u8>> for DivBufShared {
         let inner = Box::new(Inner {
             vec: src,
             accessors: rc,
-            sharers: sharers
+            sharers
         });
         DivBufShared{
             inner: Box::into_raw(inner)
@@ -524,7 +526,9 @@ impl DivBuf {
     /// ```
     pub fn try_mut(self) -> Result<DivBufMut, DivBuf> {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.compare_and_swap(1, ONE_WRITER, AcqRel) == 1 {
+        if inner.accessors.compare_exchange(1, ONE_WRITER, AcqRel, Acquire)
+            .is_ok()
+        {
             let mutable_self = Ok(DivBufMut {
                 inner: self.inner,
                 begin: self.begin,
@@ -605,12 +609,12 @@ impl Clone for DivBuf {
 impl Drop for DivBuf {
     fn drop(&mut self) {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.fetch_sub(1, Release) == 1 {
-            if inner.sharers.load(Relaxed) == 0 {
-                atomic::fence(Acquire);
-                unsafe {
-                    Box::from_raw(self.inner);
-                }
+        if inner.accessors.fetch_sub(1, Release) == 1 &&
+            inner.sharers.load(Relaxed) == 0
+        {
+            atomic::fence(Acquire);
+            unsafe {
+                Box::from_raw(self.inner);
             }
         }
     }
@@ -976,12 +980,12 @@ impl ops::DerefMut for DivBufMut {
 impl Drop for DivBufMut {
     fn drop(&mut self) {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.fetch_sub(ONE_WRITER, Release) == ONE_WRITER {
-            if inner.sharers.load(Relaxed) == 0 {
-                atomic::fence(Acquire);
-                unsafe {
-                    Box::from_raw(self.inner);
-                }
+        if inner.accessors.fetch_sub(ONE_WRITER, Release) == ONE_WRITER &&
+            inner.sharers.load(Relaxed) == 0
+        {
+            atomic::fence(Acquire);
+            unsafe {
+                Box::from_raw(self.inner);
             }
         }
     }

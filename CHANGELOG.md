@@ -4,6 +4,14 @@
   buffer.
   https://github.com/asomers/divbuf/pull/6
 
+### Changed
+- MSRV has been raised to 1.27.2
+  ([#8](https://github.com/asomers/divbuf/pull/8))
+
+### Fixed
+- Eliminated usage of `compare_and_swap`, deprecated in Rust 1.50.0.
+  ([#8](https://github.com/asomers/divbuf/pull/8))
+
 ## [0.3.1] - 2018-12-08
 ### Changed
 - `DivBufShared::try` has been replaced with `try_const` since `try` is a
