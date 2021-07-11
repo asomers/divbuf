@@ -271,7 +271,9 @@ impl DivBufShared {
     /// [`DivBufMut`]: struct.DivBufMut.html
     pub fn try_mut(&self) -> Result<DivBufMut, &'static str> {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.compare_and_swap(0, ONE_WRITER, AcqRel) == 0 {
+        if inner.accessors.compare_exchange(0, ONE_WRITER, AcqRel, Acquire)
+            .is_ok()
+        {
             let l = inner.vec.len();
             Ok(DivBufMut {
                 inner: self.inner,
@@ -524,7 +526,9 @@ impl DivBuf {
     /// ```
     pub fn try_mut(self) -> Result<DivBufMut, DivBuf> {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.compare_and_swap(1, ONE_WRITER, AcqRel) == 1 {
+        if inner.accessors.compare_exchange(1, ONE_WRITER, AcqRel, Acquire)
+            .is_ok()
+        {
             let mutable_self = Ok(DivBufMut {
                 inner: self.inner,
                 begin: self.begin,
