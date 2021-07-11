@@ -1,5 +1,4 @@
 test_task:
-  name: cargo test 
   matrix:
     - container:
        image: rust:1.24.1
@@ -23,7 +22,6 @@ test_task:
   before_cache_script: rm -rf $CARGO_HOME/registry/index
 
 minver_task:
-  name: minver
   depends_on:
     - test
   matrix:
