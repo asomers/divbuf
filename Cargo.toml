@@ -21,7 +21,6 @@ exclude       = [
 
 [dev-dependencies]
 lazy_static = "1.1"
-version_check = "0.1.4"
 
 [[test]]
 name = "functional"

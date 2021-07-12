@@ -129,12 +129,8 @@ pub fn test_divbufshared_fmt() {
     let v = Vec::<u8>::with_capacity(64);
     let dbs = DivBufShared::from(v);
     let output = format!("{:?}", &dbs);
-    // In 1.27.0 the Debug implementation of AtomicUsize changed
-    let expected = if version_check::is_min_version("1.27.0").unwrap().0 {
-        "DivBufShared { inner: Inner { vec: [], accessors: 0, sharers: 1 } }"
-    } else {
-        "DivBufShared { inner: Inner { vec: [], accessors: AtomicUsize(0), sharers: AtomicUsize(1) } }"
-    };
+    let expected =
+        "DivBufShared { inner: Inner { vec: [], accessors: 0, sharers: 1 } }";
     assert_eq!(output, expected);
 }
 
