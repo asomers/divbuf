@@ -1,11 +1,19 @@
 // vim: tw=80
 
-use std::{cmp, hash, mem, ops};
-use std::borrow::{Borrow, BorrowMut};
-use std::fmt::{self, Debug, Formatter};
-use std::io;
-use std::sync::atomic::{self, AtomicUsize};
-use std::sync::atomic::Ordering::{Relaxed, Acquire, Release, AcqRel};
+use std::{
+    borrow::{Borrow, BorrowMut},
+    cmp,
+    fmt::{self, Debug, Formatter},
+    hash,
+    io,
+    mem,
+    ops,
+    sync::atomic::{
+        self,
+        AtomicUsize,
+        Ordering::{Relaxed, Acquire, Release, AcqRel}
+    },
+};
 
 #[cfg(target_pointer_width = "64")]
 const WRITER_SHIFT: usize = 32;
@@ -224,7 +232,7 @@ impl DivBufShared {
 
     #[deprecated(since = "0.3.1", note = "use try_const instead")]
     #[doc(hidden)]
-    pub fn try(&self) -> Result<DivBuf, &'static str> {
+    pub fn r#try(&self) -> Result<DivBuf, &'static str> {
         self.try_const()
     }
 

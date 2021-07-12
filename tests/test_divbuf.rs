@@ -1,14 +1,14 @@
 // vim: tw=80
-extern crate divbuf;
-#[macro_use] extern crate lazy_static;
-extern crate version_check;
 
-use std::borrow::{Borrow, BorrowMut};
-use std::cmp::Ordering;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-use std::io::Write;
-use std::thread;
+use lazy_static::lazy_static;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    cmp::Ordering,
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+    io::Write,
+    thread
+};
 
 use divbuf::*;
 
