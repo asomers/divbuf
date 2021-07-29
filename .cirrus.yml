@@ -15,6 +15,10 @@ test_task:
     folder: $CARGO_HOME/registry
   test_script:
     - cargo test
+  bench_script:
+    - if rustc --version | grep -q nightly; then
+    -   cargo test --bench '*'
+    - fi
   asan_script:
     - if rustc --version | grep -q nightly; then
     -   env RUSTFLAGS="-Z sanitizer=address" cargo test --tests
