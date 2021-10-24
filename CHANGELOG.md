@@ -2,7 +2,7 @@
 ### Added
 - `DivBufShared::uninitialized` creates a DivBufShared with an uninitialized
   buffer.
-  https://github.com/asomers/divbuf/pull/6
+  ([#6](https://github.com/asomers/divbuf/pull/6))
 
 ### Changed
 - MSRV has been raised to 1.31.0
@@ -12,6 +12,9 @@
 ### Fixed
 - Eliminated usage of `compare_and_swap`, deprecated in Rust 1.50.0.
   ([#8](https://github.com/asomers/divbuf/pull/8))
+
+- All public methods now return error tyeps that implement `std::error::Error`.
+  ([#12](https://github.com/asomers/divbuf/pull/12))
 
 ## [0.3.1] - 2018-12-08
 ### Changed
