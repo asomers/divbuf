@@ -3,6 +3,7 @@
 use std::{
     borrow::{Borrow, BorrowMut},
     cmp,
+    error,
     fmt::{self, Debug, Formatter},
     hash,
     io,
@@ -24,6 +25,18 @@ const WRITER_SHIFT: usize = 16;
 #[cfg(target_pointer_width = "32")]
 const READER_MASK: usize = 0xFFFF;
 const ONE_WRITER : usize = 1 << WRITER_SHIFT;
+
+/// DivBuf's error type
+#[derive(Clone, Copy, Debug)]
+pub struct Error(&'static str);
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl error::Error for Error {}
 
 /// The return type of
 /// [`DivBuf::into_chunks`](struct.DivBuf.html#method.into_chunks)
@@ -232,7 +245,7 @@ impl DivBufShared {
 
     #[deprecated(since = "0.3.1", note = "use try_const instead")]
     #[doc(hidden)]
-    pub fn r#try(&self) -> Result<DivBuf, &'static str> {
+    pub fn r#try(&self) -> Result<DivBuf, Error> {
         self.try_const()
     }
 
@@ -249,11 +262,11 @@ impl DivBufShared {
     ///
     /// [`DivBuf`]: struct.DivBuf.html
     /// [`DivBufMut`]: struct.DivBufMut.html
-    pub fn try_const(&self) -> Result<DivBuf, &'static str> {
+    pub fn try_const(&self) -> Result<DivBuf, Error> {
         let inner = unsafe { &*self.inner };
         if inner.accessors.fetch_add(1, Acquire) >> WRITER_SHIFT != 0 {
             inner.accessors.fetch_sub(1, Relaxed);
-            Err("Cannot create a DivBuf when DivBufMuts are active")
+            Err(Error("Cannot create a DivBuf when DivBufMuts are active"))
         } else {
             let l = inner.vec.len();
             Ok(DivBuf {
@@ -277,7 +290,7 @@ impl DivBufShared {
     ///
     /// [`DivBuf`]: struct.DivBuf.html
     /// [`DivBufMut`]: struct.DivBufMut.html
-    pub fn try_mut(&self) -> Result<DivBufMut, &'static str> {
+    pub fn try_mut(&self) -> Result<DivBufMut, Error> {
         let inner = unsafe { &*self.inner };
         if inner.accessors.compare_exchange(0, ONE_WRITER, AcqRel, Acquire)
             .is_ok()
@@ -289,7 +302,7 @@ impl DivBufShared {
                 len: l
             })
         } else {
-            Err("Cannot create a new DivBufMut when other DivBufs or DivBufMuts are active")
+            Err(Error("Cannot create a new DivBufMut when other DivBufs or DivBufMuts are active"))
         }
     }
 
@@ -846,13 +859,13 @@ impl DivBufMut {
     /// ```
     ///
     /// [`extend`]: #method.extend
-    pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), &'static str>
+    pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), Error>
         where T: IntoIterator<Item=&'a u8> {
         if self.is_terminal() {
             self.extend_unchecked(iter);
             Ok(())
         } else {
-            Err("Can't extend into the middle of a buffer")
+            Err(Error("Can't extend into the middle of a buffer"))
         }
     }
 
@@ -876,14 +889,14 @@ impl DivBufMut {
     /// assert_eq!(&dbm0[..], &[0, 0, 0, 0][..]);
     /// ```
     pub fn try_resize(&mut self, new_len: usize,
-                      value: u8) -> Result<(), &'static str> {
+                      value: u8) -> Result<(), Error> {
         let inner = unsafe { &mut *self.inner };
         if self.is_terminal() {
             inner.vec.resize(new_len + self.begin, value);
             self.len = new_len;
             Ok(())
         } else {
-            Err("Can't resize from a non-terminal buffer")
+            Err(Error("Can't resize from a non-terminal buffer"))
         }
     }
 
@@ -906,14 +919,14 @@ impl DivBufMut {
     /// ```
     ///
     /// [`try_extend`]: #method.try_extend
-    pub fn try_truncate(&mut self, len: usize) -> Result<(), &'static str> {
+    pub fn try_truncate(&mut self, len: usize) -> Result<(), Error> {
         let inner = unsafe { &mut *self.inner };
         if self.is_terminal() {
             inner.vec.truncate(self.begin + len);
             self.len = cmp::min(self.len, len);
             Ok(())
         } else {
-            Err("Can't truncate a non-terminal DivBufMut")
+            Err(Error("Can't truncate a non-terminal DivBufMut"))
         }
     }    
 
