@@ -15,6 +15,15 @@ test_task:
     folder: $CARGO_HOME/registry
   test_script:
     - cargo test
+  clippy_script:
+    - if rustc --version | grep -q nightly; then
+    -   cargo clippy --all-targets -- -D warnings
+    - fi
+  audit_script:
+    - if rustc --version | grep -q nightly; then
+    -   cargo install cargo-audit
+    -   cargo audit
+    - fi
   bench_script:
     - if rustc --version | grep -q nightly; then
     -   cargo test --bench '*'

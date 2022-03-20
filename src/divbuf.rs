@@ -311,9 +311,12 @@ impl DivBufShared {
     ///
     /// # Safety
     ///
-    /// This is safe in the sense that it cannot segfault or cause undefined
-    /// behavior, but it does allow the caller to access unintialized memory.
-    /// Think of it as an ultra-low-quality random number generator.
+    /// This method technically causes undefined behavior, but it works with
+    /// current compilers.  A good replacement is not possible until the
+    /// read-buf feature stabilizes.
+    ///
+    /// https://github.com/rust-lang/rust/issues/78485
+    #[allow(clippy::uninit_vec)]    // Needs the read-buf feature to fix
     pub fn uninitialized(capacity: usize) -> Self {
         let mut v = Vec::<u8>::with_capacity(capacity);
         // safe because all possible byte patterns for u8 are valid
