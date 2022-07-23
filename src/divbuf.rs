@@ -775,11 +775,11 @@ impl DivBufMut {
     ///
     /// [`extend`]: #method.extend
     pub fn reserve(&mut self, additional: usize) {
-        let inner = unsafe { &mut *self.inner };
         // panic if this DivBufMut does not extend to the end of the
         // DivBufShared
         assert!(self.is_terminal(),
             "Can't reserve from the middle of a buffer");
+        let inner = unsafe { &mut *self.inner };
         inner.vec.reserve(additional)
     }
 
@@ -893,8 +893,8 @@ impl DivBufMut {
     /// ```
     pub fn try_resize(&mut self, new_len: usize,
                       value: u8) -> Result<(), Error> {
-        let inner = unsafe { &mut *self.inner };
         if self.is_terminal() {
+            let inner = unsafe { &mut *self.inner };
             inner.vec.resize(new_len + self.begin, value);
             self.len = new_len;
             Ok(())
@@ -923,8 +923,8 @@ impl DivBufMut {
     ///
     /// [`try_extend`]: #method.try_extend
     pub fn try_truncate(&mut self, len: usize) -> Result<(), Error> {
-        let inner = unsafe { &mut *self.inner };
         if self.is_terminal() {
+            let inner = unsafe { &mut *self.inner };
             inner.vec.truncate(self.begin + len);
             self.len = cmp::min(self.len, len);
             Ok(())
