@@ -350,7 +350,7 @@ impl Drop for DivBufShared {
             // required.
             atomic::fence(Acquire);
             unsafe {
-                Box::from_raw(self.inner);
+                drop(Box::from_raw(self.inner));
             }
         }
     }
@@ -638,7 +638,7 @@ impl Drop for DivBuf {
         {
             atomic::fence(Acquire);
             unsafe {
-                Box::from_raw(self.inner);
+                drop(Box::from_raw(self.inner));
             }
         }
     }
@@ -1009,7 +1009,7 @@ impl Drop for DivBufMut {
         {
             atomic::fence(Acquire);
             unsafe {
-                Box::from_raw(self.inner);
+                drop(Box::from_raw(self.inner));
             }
         }
     }
