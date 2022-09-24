@@ -1,5 +1,10 @@
 ## [Unreleased] - RelaseDate
 ### Added
+- `DivBufInaccessible` has neither read nor write access, but it is `Clone`,
+  and can be upgraded to an accessible buffer.  It's useful for recreating a
+  `DivBufMut` that must be thrown away.
+  ([#15](https://github.com/asomers/divbuf/pull/15))
+
 - `DivBufShared::uninitialized` creates a DivBufShared with an uninitialized
   buffer.
   ([#6](https://github.com/asomers/divbuf/pull/6))

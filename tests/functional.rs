@@ -266,6 +266,13 @@ mod divbuf_ {
     }
 
     #[test]
+    pub fn clone_inaccessible() {
+        let dbs = DivBufShared::from(vec![1, 2, 3]);
+        let dbm = dbs.try_mut().unwrap();
+        let _dbi: DivBufInaccessible = dbm.clone_inaccessible();
+    }
+
+    #[test]
     pub fn deref() {
         let dbs = DivBufShared::from(vec![1, 2, 3]);
         let db = dbs.try_const().unwrap();
@@ -517,6 +524,87 @@ mod divbuf_ {
     }
 }
 
+mod divbuf_inaccessible {
+    use super::*;
+
+    /// DivBufInaccessible's superpower is clone.
+    #[test]
+    #[allow(clippy::redundant_clone)]
+    pub fn clone() {
+        let dbs0 = DivBufShared::from(vec![1, 2, 3]);
+        let db0 = dbs0.try_const().unwrap();
+        let dbi0 = db0.clone_inaccessible();
+        let _dbi1 = dbi0.clone();
+    }
+
+    // A DivBufInaccessible should be able to own its storage, and will free it
+    // on last drop.
+    #[test]
+    pub fn drop_last() {
+        let dbs0 = DivBufShared::from(vec![1, 2, 3]);
+        let db0 = dbs0.try_const().unwrap();
+        let _dbi = db0.clone_inaccessible();
+        drop(db0);
+        drop(dbs0);
+    }
+
+    #[test]
+    pub fn send() {
+        let dbs = DivBufShared::with_capacity(4096);
+        let db = dbs.try_const().unwrap();
+        let dbi = db.clone_inaccessible();
+        thread::spawn(move || {
+            let _ = dbi;
+        }).join().unwrap();
+    }
+
+    #[test]
+    pub fn sync() {
+        lazy_static! {
+            pub static ref DBS: DivBufShared = DivBufShared::from(vec![0; 4096]);
+            pub static ref DB: DivBuf = DBS.try_const().unwrap();
+            pub static ref DBI: DivBufInaccessible = DB.clone_inaccessible();
+        }
+        let r = &DBI;
+        thread::spawn(move || {
+            let _ = r;
+        }).join().unwrap();
+    }
+
+    #[test]
+    pub fn try_const_failure() {
+        let dbs0 = DivBufShared::from(vec![1, 2, 3]);
+        let dbm = dbs0.try_mut().unwrap();
+        let dbi = dbm.clone_inaccessible();
+        dbi.try_const().unwrap_err();
+    }
+
+    #[test]
+    pub fn try_const_success() {
+        let dbs0 = DivBufShared::from(vec![1, 2, 3]);
+        let db0 = dbs0.try_const().unwrap();
+        let dbi = db0.clone_inaccessible();
+        dbi.try_const().unwrap();
+    }
+
+    #[test]
+    pub fn try_mut_failure() {
+        let dbs0 = DivBufShared::from(vec![1, 2, 3]);
+        let db = dbs0.try_const().unwrap();
+        let dbi = db.clone_inaccessible();
+        dbi.try_mut().unwrap_err();
+    }
+
+    #[test]
+    pub fn try_mut_success() {
+        let dbs0 = DivBufShared::from(vec![1, 2, 3]);
+        let db0 = dbs0.try_const().unwrap();
+        let dbi = db0.clone_inaccessible();
+        drop(db0);
+        dbi.try_mut().unwrap();
+    }
+}
+
 //
 // DivBufMut methods
 //
@@ -558,6 +646,13 @@ mod divbuf_mut {
         let db0 = dbs.try_const().unwrap();
         let slice : &[u8] = &db0;
         assert_eq!(slice, &[9, 2, 3]);
+    }
+
+    #[test]
+    pub fn clone_inaccessible() {
+        let dbs = DivBufShared::from(vec![1, 2, 3]);
+        let db = dbs.try_const().unwrap();
+        let _dbi: DivBufInaccessible = db.clone_inaccessible();
     }
 
     #[test]

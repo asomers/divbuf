@@ -224,6 +224,17 @@ pub struct DivBufMut {
 }
 // LCOV_EXCL_STOP
 
+/// Does not offer either read or write access to the data, but can be upgraded
+/// to a buffer that does.  Useful because it implements `Clone`, and does not
+/// block other [`DivBufMut`] structures from existing.
+#[derive(Debug)]
+pub struct DivBufInaccessible {
+    inner: *mut Inner,
+    // In the future, consider optimizing by replacing begin with a pointer
+    begin: usize,
+    len: usize,
+}
+
 impl DivBufShared {
     /// Returns the number of bytes the buffer can hold without reallocating.
     pub fn capacity(&self) -> usize {
@@ -385,6 +396,28 @@ unsafe impl Send for DivBufShared {}
 unsafe impl Sync for DivBufShared {}
 
 impl DivBuf {
+    /// Create a [`DivBufInaccessible`].
+    ///
+    /// It may later be upgraded to one of the accessible forms.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    /// let dbs = DivBufShared::with_capacity(4096);
+    /// let db = dbs.try_const().unwrap();
+    /// let _dbi = db.clone_inaccessible();
+    /// ```
+    pub fn clone_inaccessible(&self) -> DivBufInaccessible {
+        let inner = unsafe { &*self.inner };
+        let old = inner.sharers.fetch_add(1, Acquire);
+        debug_assert!(old > 0);
+        DivBufInaccessible {
+            inner: self.inner,
+            begin: self.begin,
+            len: self.len
+        }
+    }
+
     /// Break the buffer up into equal sized chunks
     ///
     /// Returns an interator which will yield equal sized chunks as smaller
@@ -686,6 +719,28 @@ unsafe impl Send for DivBuf {}
 unsafe impl Sync for DivBuf {}
 
 impl DivBufMut {
+    /// Create a [`DivBufInaccessible`].
+    ///
+    /// It may later be upgraded to one of the accessible forms.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    /// let dbs = DivBufShared::with_capacity(4096);
+    /// let dbm = dbs.try_mut().unwrap();
+    /// let _dbi = dbm.clone_inaccessible();
+    /// ```
+    pub fn clone_inaccessible(&self) -> DivBufInaccessible {
+        let inner = unsafe { &*self.inner };
+        let old = inner.sharers.fetch_add(1, Acquire);
+        debug_assert!(old > 0);
+        DivBufInaccessible {
+            inner: self.inner,
+            begin: self.begin,
+            len: self.len
+        }
+    }
+
     /// Extend self from iterator, without checking for validity
     fn extend_unchecked<'a, T>(&mut self, iter: T)
         where T: IntoIterator<Item=&'a u8> {
@@ -1086,3 +1141,96 @@ impl io::Write for DivBufMut {
         Ok(())
     }
 }
+
+impl DivBufInaccessible {
+    /// Try to upgrade to a [`DivBuf`].
+    ///
+    /// Will fail if there are any [`DivBufMut`]s referring to this same buffer.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    /// let dbs = DivBufShared::with_capacity(4096);
+    /// let dbm = dbs.try_mut().unwrap();
+    /// let dbi = dbm.clone_inaccessible();
+    /// drop(dbm);
+    /// let _db: DivBuf = dbi.try_const().unwrap();
+    /// ```
+    pub fn try_const(&self) -> Result<DivBuf, Error> {
+        let inner = unsafe { &*self.inner };
+        if inner.accessors.fetch_add(1, Acquire) >> WRITER_SHIFT != 0 {
+            inner.accessors.fetch_sub(1, Relaxed);
+            Err(Error("Cannot create a DivBuf when DivBufMuts are active"))
+        } else {
+            Ok(DivBuf {
+                inner: self.inner,
+                begin: self.begin,
+                len: self.len
+            })
+        }
+    }
+
+    /// Try to upgrade to a [`DivBufMut`].
+    ///
+    /// Will fail if there are any [`DivBufMut`]s referring to this same buffer.
+    ///
+    /// # Examples
+    /// ```
+    /// # use divbuf::*;
+    /// let dbs = DivBufShared::with_capacity(4096);
+    /// let dbm = dbs.try_mut().unwrap();
+    /// let dbi = dbm.clone_inaccessible();
+    /// drop(dbm);
+    /// let _dbm: DivBufMut = dbi.try_mut().unwrap();
+    /// ```
+    pub fn try_mut(&self) -> Result<DivBufMut, Error> {
+        let inner = unsafe { &*self.inner };
+        if inner.accessors.compare_exchange(0, ONE_WRITER, AcqRel, Acquire)
+            .is_ok()
+        {
+            Ok(DivBufMut {
+                inner: self.inner,
+                begin: self.begin,
+                len: self.len
+            })
+        } else {
+            Err(Error("Cannot upgrade when DivBufMuts are active"))
+        }
+    }
+}
+
+impl Clone for DivBufInaccessible {
+    fn clone(&self) -> Self {
+        let inner = unsafe { &*self.inner };
+        let old = inner.sharers.fetch_add(1, Acquire);
+        debug_assert!(old > 0);
+        DivBufInaccessible {
+            inner: self.inner,
+            begin: self.begin,
+            len: self.len
+        }
+    }
+}
+
+impl Drop for DivBufInaccessible {
+    fn drop(&mut self) {
+        let inner = unsafe { &*self.inner };
+        if inner.sharers.fetch_sub(1, Release) == 1 &&
+            inner.accessors.load(Relaxed) == 0
+        {
+            // See the comments in std::sync::Arc::drop for why the fence is
+            // required.
+            atomic::fence(Acquire);
+            unsafe {
+                drop(Box::from_raw(self.inner));
+            }
+        }
+    }
+}
+
+// DivBufInaccessible owns the target of the `inner` pointer, and no method
+// allows that pointer to be mutated.  Atomic refcounts guarantee that no more
+// than one writer at a time can modify `inner`'s contents (as long as DivBufMut
+// is Sync, which it is).  Therefore, DivBufInaccessible is both Send and Sync.
+unsafe impl Send for DivBufInaccessible {}
+unsafe impl Sync for DivBufInaccessible {}
