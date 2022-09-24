@@ -21,11 +21,3 @@ exclude       = [
 
 [dev-dependencies]
 lazy_static = "1.1"
-
-[[test]]
-name = "functional"
-path = "tests/test_divbuf.rs"
-
-[[test]]
-name = "thread_race"
-path = "tests/thread_race.rs"
