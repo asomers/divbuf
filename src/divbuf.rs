@@ -706,7 +706,7 @@ impl PartialEq<[u8]> for DivBuf {
 
 impl PartialOrd for DivBuf {
     fn partial_cmp(&self, other: &DivBuf) -> Option<cmp::Ordering> {
-        self.as_ref().partial_cmp(other.as_ref())
+        Some(self.cmp(other))
     }
 }
 
@@ -1110,7 +1110,7 @@ impl PartialEq<[u8]> for DivBufMut {
 
 impl PartialOrd for DivBufMut {
     fn partial_cmp(&self, other: &DivBufMut) -> Option<cmp::Ordering> {
-        self.as_ref().partial_cmp(other.as_ref())
+        Some(self.cmp(other))
     }
 }
 
