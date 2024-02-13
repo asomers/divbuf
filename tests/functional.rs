@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 use std::{
     borrow::{Borrow, BorrowMut},
     cmp::Ordering,
+    convert::TryInto,
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
     io::Write,
@@ -230,6 +231,55 @@ mod divbufshared {
         let dbs = DivBufShared::uninitialized(cap);
         assert_eq!(dbs.capacity(), cap);
         assert_eq!(dbs.len(), cap);
+    }
+
+    #[test]
+    pub fn to_vec() {
+        let v = vec![1, 2, 3, 4];
+        let dbs = DivBufShared::from(v);
+
+        {
+            let mut dbm = dbs.try_mut().unwrap();
+            assert_eq!(dbm, [1, 2, 3, 4][..]);
+            dbm[0] = 5;
+            assert_eq!(dbm, [5, 2, 3, 4][..]);
+        }
+
+        let v2: Vec<u8> = dbs.try_into().unwrap();
+        assert_eq!(v2, vec![5, 2, 3, 4]);
+    }
+
+    #[test]
+    pub fn to_vec_after_try_mut() {
+        let v = vec![1, 2, 3, 4];
+        let dbs = DivBufShared::from(v);
+
+        let _dbm = dbs.try_mut().unwrap();
+        let maybe_v: Result<Vec<u8>, _> = dbs.try_into();
+        assert!(maybe_v.is_err());
+    }
+
+    #[test]
+    pub fn to_vec_after_try_const() {
+        let v = vec![1, 2, 3, 4];
+        let dbs = DivBufShared::from(v);
+
+        let _db = dbs.try_const().unwrap();
+        let maybe_v: Result<Vec<u8>, _> = dbs.try_into();
+        assert!(maybe_v.is_err());
+    }
+
+    #[test]
+    pub fn to_vec_after_clone_inaccessible() {
+        let v = vec![1, 2, 3, 4];
+        let dbs = DivBufShared::from(v);
+
+        let dbm = dbs.try_mut().unwrap();
+        let _dbi = dbm.clone_inaccessible();
+        drop(dbm);
+
+        let maybe_v: Result<Vec<u8>, _> = dbs.try_into();
+        assert!(maybe_v.is_err());
     }
 }
 
