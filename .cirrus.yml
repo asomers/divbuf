@@ -17,6 +17,7 @@ test_task:
     - cargo test
   clippy_script:
     - if rustc --version | grep -q nightly; then
+    -   rustup component add clippy
     -   cargo clippy --all-targets -- -D warnings
     - fi
   audit_script:
