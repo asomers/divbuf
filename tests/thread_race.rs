@@ -49,8 +49,6 @@ fn writefunc() {
 /// buffer.  They run for a fixed time.  Success happens if nobody panics.
 #[test]
 fn test_thread_race() {
-    //let mut dbs = DivBufShared::from(vec![0; 4096]);
-
     let reader0 = thread::spawn(readfunc);
     let reader1 = thread::spawn(readfunc);
     let writer0 = thread::spawn(writefunc);
