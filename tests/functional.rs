@@ -198,7 +198,7 @@ mod divbufshared {
     }
 
     #[test]
-    pub fn try_after_try_mut() {
+    pub fn try_const_after_try_mut() {
         let dbs = DivBufShared::with_capacity(4096);
         // Create an initial DivBufMut
         let _dbm = dbs.try_mut().unwrap();
@@ -212,6 +212,15 @@ mod divbufshared {
         // Create an initial DivBufMut
         let _dbm0 = dbs.try_mut().unwrap();
         // Creating a second is not allowed
+        assert!(dbs.try_mut().is_err());
+    }
+
+    #[test]
+    pub fn try_mut_after_try_const() {
+        let dbs = DivBufShared::with_capacity(4096);
+        // Create an initial DivBuf
+        let _db0 = dbs.try_const().unwrap();
+        // Now creating a mutable buffer is not allowed
         assert!(dbs.try_mut().is_err());
     }
 
@@ -472,7 +481,7 @@ mod divbuf_ {
     }
 
     #[test]
-    pub fn trymut() {
+    pub fn try_mut() {
         let dbs = DivBufShared::with_capacity(64);
         let mut db0 = dbs.try_const().unwrap();
         db0 = {
