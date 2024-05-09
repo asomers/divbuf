@@ -3,6 +3,7 @@
 use std::{
     borrow::{Borrow, BorrowMut},
     cmp,
+    convert::TryFrom,
     error,
     fmt::{self, Debug, Formatter},
     hash,
@@ -387,6 +388,44 @@ impl From<Vec<u8>> for DivBufShared {
         }
     }
 }
+
+impl TryFrom<DivBufShared> for Vec<u8> {
+    type Error = DivBufShared;
+
+    /// Attempt to extract the owned storage from a DivBufShared.
+    ///
+    /// This will fail if there are any other living references to this same
+    /// `DivBufShared` (`DivBuf`s, `DivBufMut`s, etc), in which case the
+    /// `DivBufShared` will be returned unmodified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use divbuf::*;
+    /// use std::convert::TryInto;
+    /// let dbs = DivBufShared::from(vec![1, 2, 3, 4, 5, 6]);
+    /// let vec: Vec<u8> = dbs.try_into().unwrap();
+    /// assert_eq!(vec, vec![1, 2, 3, 4, 5, 6]);
+    /// ```
+    fn try_from(buf: DivBufShared) -> Result<Self, Self::Error> {
+        let inner = unsafe { &*buf.inner };
+        if inner.sharers.load(Acquire) == 1 &&
+            inner.accessors.load(Acquire) == 0
+        {
+            // See the comments in std::sync::Arc::drop for why the fence is
+            // required.
+            atomic::fence(Acquire);
+            let mut inner_box = unsafe {
+                Box::from_raw(buf.inner)
+            };
+            mem::forget(buf);
+            Ok(mem::take(&mut inner_box.vec))
+        } else {
+            Err(buf)
+        }
+    }
+}
+
 
 // DivBufShared owns the target of the `inner` pointer, and no method allows
 // that pointer to be mutated.  Atomic refcounts guarantee that no more than one
