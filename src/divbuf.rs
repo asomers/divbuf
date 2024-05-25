@@ -327,7 +327,7 @@ impl DivBufShared {
     /// current compilers.  A good replacement is not possible until the
     /// read-buf feature stabilizes.
     ///
-    /// https://github.com/rust-lang/rust/issues/78485
+    /// <https://github.com/rust-lang/rust/issues/78485>
     #[allow(clippy::uninit_vec)]    // Needs the read-buf feature to fix
     pub fn uninitialized(capacity: usize) -> Self {
         let mut v = Vec::<u8>::with_capacity(capacity);
