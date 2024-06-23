@@ -29,6 +29,11 @@ test_task:
     - if rustc --version | grep -q nightly; then
     -   cargo test --bench '*'
     - fi
+  fmt_script:
+    - if rustc --version | grep -q nightly; then
+    -   rustup component add rustfmt
+    -   cargo fmt -- --check
+    - fi
   asan_script:
     - if rustc --version | grep -q nightly; then
     -   env RUSTFLAGS="-Z sanitizer=address" cargo test --tests
