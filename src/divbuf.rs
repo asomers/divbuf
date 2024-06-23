@@ -13,7 +13,7 @@ use std::{
     sync::atomic::{
         self,
         AtomicUsize,
-        Ordering::{Relaxed, Acquire, Release, AcqRel}
+        Ordering::{AcqRel, Acquire, Relaxed, Release},
     },
 };
 
@@ -25,7 +25,7 @@ const READER_MASK: usize = 0xFFFF_FFFF;
 const WRITER_SHIFT: usize = 16;
 #[cfg(target_pointer_width = "32")]
 const READER_MASK: usize = 0xFFFF;
-const ONE_WRITER : usize = 1 << WRITER_SHIFT;
+const ONE_WRITER: usize = 1 << WRITER_SHIFT;
 
 /// DivBuf's error type
 #[derive(Clone, Copy, Debug)]
@@ -44,14 +44,14 @@ impl error::Error for Error {}
 // LCOV_EXCL_START
 #[derive(Debug)]
 pub struct Chunks {
-    db: DivBuf,
-    chunksize: usize
+    db:        DivBuf,
+    chunksize: usize,
 }
 // LCOV_EXCL_STOP
 
 impl Chunks {
     fn new(db: DivBuf, chunksize: usize) -> Self {
-        Chunks {db, chunksize}
+        Chunks { db, chunksize }
     }
 }
 
@@ -81,14 +81,14 @@ impl Iterator for Chunks {
 // LCOV_EXCL_START
 #[derive(Debug)]
 pub struct ChunksMut {
-    db: DivBufMut,
-    chunksize: usize
+    db:        DivBufMut,
+    chunksize: usize,
 }
 // LCOV_EXCL_STOP
 
 impl ChunksMut {
     fn new(db: DivBufMut, chunksize: usize) -> Self {
-        ChunksMut {db, chunksize}
+        ChunksMut { db, chunksize }
     }
 }
 
@@ -116,12 +116,12 @@ impl Iterator for ChunksMut {
 // LCOV_EXCL_START
 #[derive(Debug)]
 struct Inner {
-    vec: Vec<u8>,
+    vec:       Vec<u8>,
     /// Stores the number of readers in the low half, and writers in the high
     /// half.
     accessors: AtomicUsize,
     /// Stores the total number of DivBufShareds owning this Inner
-    sharers: AtomicUsize
+    sharers:   AtomicUsize,
 }
 // LCOV_EXCL_STOP
 
@@ -179,7 +179,7 @@ pub struct DivBuf {
     inner: *mut Inner,
     // In the future, consider optimizing by replacing begin with a pointer
     begin: usize,
-    len: usize,
+    len:   usize,
 }
 // LCOV_EXCL_STOP
 
@@ -221,7 +221,7 @@ pub struct DivBufMut {
     inner: *mut Inner,
     // In the future, consider optimizing by replacing begin with a pointer
     begin: usize,
-    len: usize,
+    len:   usize,
 }
 // LCOV_EXCL_STOP
 
@@ -233,7 +233,7 @@ pub struct DivBufInaccessible {
     inner: *mut Inner,
     // In the future, consider optimizing by replacing begin with a pointer
     begin: usize,
-    len: usize,
+    len:   usize,
 }
 
 impl DivBufShared {
@@ -284,7 +284,7 @@ impl DivBufShared {
             Ok(DivBuf {
                 inner: self.inner,
                 begin: 0,
-                len: l
+                len:   l,
             })
         }
     }
@@ -304,17 +304,22 @@ impl DivBufShared {
     /// [`DivBufMut`]: struct.DivBufMut.html
     pub fn try_mut(&self) -> Result<DivBufMut, Error> {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.compare_exchange(0, ONE_WRITER, AcqRel, Acquire)
+        if inner
+            .accessors
+            .compare_exchange(0, ONE_WRITER, AcqRel, Acquire)
             .is_ok()
         {
             let l = inner.vec.len();
             Ok(DivBufMut {
                 inner: self.inner,
                 begin: 0,
-                len: l
+                len:   l,
             })
         } else {
-            Err(Error("Cannot create a new DivBufMut when other DivBufs or DivBufMuts are active"))
+            Err(Error(
+                "Cannot create a new DivBufMut when other DivBufs or \
+                 DivBufMuts are active",
+            ))
         }
     }
 
@@ -328,7 +333,7 @@ impl DivBufShared {
     /// read-buf feature stabilizes.
     ///
     /// <https://github.com/rust-lang/rust/issues/78485>
-    #[allow(clippy::uninit_vec)]    // Needs the read-buf feature to fix
+    #[allow(clippy::uninit_vec)] // Needs the read-buf feature to fix
     pub fn uninitialized(capacity: usize) -> Self {
         let mut v = Vec::<u8>::with_capacity(capacity);
         // safe because all possible byte patterns for u8 are valid
@@ -355,8 +360,8 @@ impl Debug for DivBufShared {
 impl Drop for DivBufShared {
     fn drop(&mut self) {
         let inner = unsafe { &*self.inner };
-        if inner.sharers.fetch_sub(1, Release) == 1 &&
-            inner.accessors.load(Relaxed) == 0
+        if inner.sharers.fetch_sub(1, Release) == 1
+            && inner.accessors.load(Relaxed) == 0
         {
             // See the comments in std::sync::Arc::drop for why the fence is
             // required.
@@ -381,10 +386,10 @@ impl From<Vec<u8>> for DivBufShared {
         let inner = Box::new(Inner {
             vec: src,
             accessors: rc,
-            sharers
+            sharers,
         });
-        DivBufShared{
-            inner: Box::into_raw(inner)
+        DivBufShared {
+            inner: Box::into_raw(inner),
         }
     }
 }
@@ -409,15 +414,13 @@ impl TryFrom<DivBufShared> for Vec<u8> {
     /// ```
     fn try_from(buf: DivBufShared) -> Result<Self, Self::Error> {
         let inner = unsafe { &*buf.inner };
-        if inner.sharers.load(Acquire) == 1 &&
-            inner.accessors.load(Acquire) == 0
+        if inner.sharers.load(Acquire) == 1
+            && inner.accessors.load(Acquire) == 0
         {
             // See the comments in std::sync::Arc::drop for why the fence is
             // required.
             atomic::fence(Acquire);
-            let mut inner_box = unsafe {
-                Box::from_raw(buf.inner)
-            };
+            let mut inner_box = unsafe { Box::from_raw(buf.inner) };
             mem::forget(buf);
             Ok(mem::take(&mut inner_box.vec))
         } else {
@@ -425,7 +428,6 @@ impl TryFrom<DivBufShared> for Vec<u8> {
         }
     }
 }
-
 
 // DivBufShared owns the target of the `inner` pointer, and no method allows
 // that pointer to be mutated.  Atomic refcounts guarantee that no more than one
@@ -453,7 +455,7 @@ impl DivBuf {
         DivBufInaccessible {
             inner: self.inner,
             begin: self.begin,
-            len: self.len
+            len:   self.len,
         }
     }
 
@@ -513,9 +515,9 @@ impl DivBuf {
         DivBuf {
             inner: self.inner,
             begin: self.begin + begin,
-            len: end - begin
+            len:   end - begin,
         }
-    }    
+    }
 
     /// Creates a new DivBuf that spans a subset of this one, including the end
     ///
@@ -530,7 +532,7 @@ impl DivBuf {
     pub fn slice_from(&self, begin: usize) -> DivBuf {
         self.slice(begin, self.len())
     }
-    
+
     /// Creates a new DivBuf that spans a subset of self, including the
     /// beginning
     ///
@@ -571,7 +573,7 @@ impl DivBuf {
         let right_half = DivBuf {
             inner: self.inner,
             begin: self.begin + at,
-            len: self.len - at
+            len:   self.len - at,
         };
         self.len = at;
         right_half
@@ -601,7 +603,7 @@ impl DivBuf {
         let left_half = DivBuf {
             inner: self.inner,
             begin: self.begin,
-            len: at
+            len:   at,
         };
         self.begin += at;
         self.len -= at;
@@ -622,17 +624,20 @@ impl DivBuf {
     /// ```
     pub fn try_mut(self) -> Result<DivBufMut, DivBuf> {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.compare_exchange(1, ONE_WRITER, AcqRel, Acquire)
+        if inner
+            .accessors
+            .compare_exchange(1, ONE_WRITER, AcqRel, Acquire)
             .is_ok()
         {
             let mutable_self = Ok(DivBufMut {
                 inner: self.inner,
                 begin: self.begin,
-                len: self.len
+                len:   self.len,
             });
             mem::forget(self);
             mutable_self
-        } else {    // LCOV_EXCL_LINE   kcov false negative
+        } else {
+            // LCOV_EXCL_LINE   kcov false negative
             Err(self)
         }
     }
@@ -679,7 +684,10 @@ impl Borrow<[u8]> for DivBuf {
 }
 
 impl hash::Hash for DivBuf {
-    fn hash<H>(&self, state: &mut H) where H: hash::Hasher {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
         let s: &[u8] = self.as_ref();
         s.hash(state);
     }
@@ -705,8 +713,8 @@ impl Clone for DivBuf {
 impl Drop for DivBuf {
     fn drop(&mut self) {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.fetch_sub(1, Release) == 1 &&
-            inner.sharers.load(Relaxed) == 0
+        if inner.accessors.fetch_sub(1, Release) == 1
+            && inner.sharers.load(Relaxed) == 0
         {
             atomic::fence(Acquire);
             unsafe {
@@ -716,8 +724,7 @@ impl Drop for DivBuf {
     }
 }
 
-impl Eq for DivBuf {
-}
+impl Eq for DivBuf {}
 
 impl From<DivBufMut> for DivBuf {
     fn from(src: DivBufMut) -> DivBuf {
@@ -776,13 +783,15 @@ impl DivBufMut {
         DivBufInaccessible {
             inner: self.inner,
             begin: self.begin,
-            len: self.len
+            len:   self.len,
         }
     }
 
     /// Extend self from iterator, without checking for validity
     fn extend_unchecked<'a, T>(&mut self, iter: T)
-        where T: IntoIterator<Item=&'a u8> {
+    where
+        T: IntoIterator<Item = &'a u8>,
+    {
         let inner = unsafe { &mut *self.inner };
         let oldlen = inner.vec.len();
         inner.vec.extend(iter);
@@ -813,7 +822,7 @@ impl DivBufMut {
         DivBuf {
             inner: self.inner,
             begin: self.begin,
-            len: self.len
+            len:   self.len,
         }
     }
 
@@ -871,8 +880,10 @@ impl DivBufMut {
     pub fn reserve(&mut self, additional: usize) {
         // panic if this DivBufMut does not extend to the end of the
         // DivBufShared
-        assert!(self.is_terminal(),
-            "Can't reserve from the middle of a buffer");
+        assert!(
+            self.is_terminal(),
+            "Can't reserve from the middle of a buffer"
+        );
         let inner = unsafe { &mut *self.inner };
         inner.vec.reserve(additional)
     }
@@ -902,7 +913,7 @@ impl DivBufMut {
         let right_half = DivBufMut {
             inner: self.inner,
             begin: self.begin + at,
-            len: self.len - at
+            len:   self.len - at,
         };
         self.len = at;
         right_half
@@ -932,7 +943,7 @@ impl DivBufMut {
         let left_half = DivBufMut {
             inner: self.inner,
             begin: self.begin,
-            len: at
+            len:   at,
         };
         self.begin += at;
         self.len -= at;
@@ -957,7 +968,9 @@ impl DivBufMut {
     ///
     /// [`extend`]: #method.extend
     pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), Error>
-        where T: IntoIterator<Item=&'a u8> {
+    where
+        T: IntoIterator<Item = &'a u8>,
+    {
         if self.is_terminal() {
             self.extend_unchecked(iter);
             Ok(())
@@ -985,8 +998,11 @@ impl DivBufMut {
     /// assert!(dbm0.try_resize(4, 0).is_ok());
     /// assert_eq!(&dbm0[..], &[0, 0, 0, 0][..]);
     /// ```
-    pub fn try_resize(&mut self, new_len: usize,
-                      value: u8) -> Result<(), Error> {
+    pub fn try_resize(
+        &mut self,
+        new_len: usize,
+        value: u8,
+    ) -> Result<(), Error> {
         if self.is_terminal() {
             let inner = unsafe { &mut *self.inner };
             inner.vec.resize(new_len + self.begin, value);
@@ -1025,7 +1041,7 @@ impl DivBufMut {
         } else {
             Err(Error("Can't truncate a non-terminal DivBufMut"))
         }
-    }    
+    }
 
     /// Combine splitted DivBufMut objects back into a contiguous single
     ///
@@ -1098,8 +1114,8 @@ impl ops::DerefMut for DivBufMut {
 impl Drop for DivBufMut {
     fn drop(&mut self) {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.fetch_sub(ONE_WRITER, Release) == ONE_WRITER &&
-            inner.sharers.load(Relaxed) == 0
+        if inner.accessors.fetch_sub(ONE_WRITER, Release) == ONE_WRITER
+            && inner.sharers.load(Relaxed) == 0
         {
             atomic::fence(Acquire);
             unsafe {
@@ -1111,23 +1127,30 @@ impl Drop for DivBufMut {
 
 impl<'a> Extend<&'a u8> for DivBufMut {
     fn extend<T>(&mut self, iter: T)
-        where T: IntoIterator<Item = &'a u8> {
+    where
+        T: IntoIterator<Item = &'a u8>,
+    {
         // panic if this DivBufMut does not extend to the end of the
         // DivBufShared
-        assert!(self.is_terminal(), "Can't extend into the middle of a buffer");
+        assert!(
+            self.is_terminal(),
+            "Can't extend into the middle of a buffer"
+        );
         self.extend_unchecked(iter);
     }
 }
 
 impl hash::Hash for DivBufMut {
-    fn hash<H>(&self, state: &mut H) where H: hash::Hasher {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
         let s: &[u8] = self.as_ref();
         s.hash(state);
     }
 }
 
-impl Eq for DivBufMut {
-}
+impl Eq for DivBufMut {}
 
 impl Ord for DivBufMut {
     fn cmp(&self, other: &DivBufMut) -> cmp::Ordering {
@@ -1204,7 +1227,7 @@ impl DivBufInaccessible {
             Ok(DivBuf {
                 inner: self.inner,
                 begin: self.begin,
-                len: self.len
+                len:   self.len,
             })
         }
     }
@@ -1224,13 +1247,15 @@ impl DivBufInaccessible {
     /// ```
     pub fn try_mut(&self) -> Result<DivBufMut, Error> {
         let inner = unsafe { &*self.inner };
-        if inner.accessors.compare_exchange(0, ONE_WRITER, AcqRel, Acquire)
+        if inner
+            .accessors
+            .compare_exchange(0, ONE_WRITER, AcqRel, Acquire)
             .is_ok()
         {
             Ok(DivBufMut {
                 inner: self.inner,
                 begin: self.begin,
-                len: self.len
+                len:   self.len,
             })
         } else {
             Err(Error("Cannot upgrade when DivBufMuts are active"))
@@ -1246,7 +1271,7 @@ impl Clone for DivBufInaccessible {
         DivBufInaccessible {
             inner: self.inner,
             begin: self.begin,
-            len: self.len
+            len:   self.len,
         }
     }
 }
@@ -1254,8 +1279,8 @@ impl Clone for DivBufInaccessible {
 impl Drop for DivBufInaccessible {
     fn drop(&mut self) {
         let inner = unsafe { &*self.inner };
-        if inner.sharers.fetch_sub(1, Release) == 1 &&
-            inner.accessors.load(Relaxed) == 0
+        if inner.sharers.fetch_sub(1, Release) == 1
+            && inner.accessors.load(Relaxed) == 0
         {
             // See the comments in std::sync::Arc::drop for why the fence is
             // required.

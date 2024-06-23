@@ -2,11 +2,9 @@
 
 extern crate test;
 
+use std::{collections::hash_map::DefaultHasher, hash::Hash};
+
 use divbuf::*;
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::Hash
-};
 use test::Bencher;
 
 #[bench]

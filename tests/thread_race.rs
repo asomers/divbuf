@@ -1,12 +1,13 @@
 // vim: tw=80
 
-use divbuf::*;
-use lazy_static::lazy_static;
 use std::{
     sync::atomic::{AtomicBool, Ordering::Relaxed},
     thread,
     time,
 };
+
+use divbuf::*;
+use lazy_static::lazy_static;
 
 lazy_static! {
     pub static ref DBS: DivBufShared = DivBufShared::from(vec![0; 4096]);
@@ -40,7 +41,6 @@ fn writefunc() {
         } else {
             losses += 1;
         }
-
     }
     println!("writer won {} races and lost {}", wins, losses);
 }
