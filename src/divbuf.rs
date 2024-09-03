@@ -226,8 +226,10 @@ pub struct DivBufMut {
 // LCOV_EXCL_STOP
 
 /// Does not offer either read or write access to the data, but can be upgraded
-/// to a buffer that does.  Useful because it implements `Clone`, and does not
-/// block other [`DivBufMut`] structures from existing.
+/// to a buffer that does.
+///
+/// Useful because it implements `Clone`, and does not block other [`DivBufMut`]
+/// structures from existing.
 #[derive(Debug)]
 pub struct DivBufInaccessible {
     inner: *mut Inner,
