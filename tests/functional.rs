@@ -280,6 +280,7 @@ mod divbufshared {
         assert!(dbs.try_mut().is_err());
     }
 
+    #[cfg(feature = "experimental")]
     #[test]
     pub fn uninitialized() {
         let cap = 4096;

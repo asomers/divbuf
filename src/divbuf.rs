@@ -335,6 +335,8 @@ impl DivBufShared {
     /// read-buf feature stabilizes.
     ///
     /// <https://github.com/rust-lang/rust/issues/78485>
+    #[cfg(any(feature = "experimental", docsrs))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "experimental")))]
     #[allow(clippy::uninit_vec)] // Needs the read-buf feature to fix
     pub fn uninitialized(capacity: usize) -> Self {
         let mut v = Vec::<u8>::with_capacity(capacity);

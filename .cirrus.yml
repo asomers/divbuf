@@ -14,11 +14,11 @@ test_task:
   cargo_cache:
     folder: $CARGO_HOME/registry
   test_script:
-    - cargo test
+    - cargo test --all-features
   clippy_script:
     - if rustc --version | grep -q nightly; then
     -   rustup component add clippy
-    -   cargo clippy --all-targets -- -D warnings
+    -   cargo clippy --all-features --all-targets -- -D warnings
     - fi
   audit_script:
     - if rustc --version | grep -q nightly; then
@@ -27,7 +27,7 @@ test_task:
     - fi
   bench_script:
     - if rustc --version | grep -q nightly; then
-    -   cargo test --bench '*'
+    -   cargo test --all-features --bench '*'
     - fi
   fmt_script:
     - if rustc --version | grep -q nightly; then
@@ -36,7 +36,7 @@ test_task:
     - fi
   asan_script:
     - if rustc --version | grep -q nightly; then
-    -   env RUSTFLAGS="-Z sanitizer=address" cargo test --tests
+    -   env RUSTFLAGS="-Z sanitizer=address" cargo test --all-features --tests
     - fi
   before_cache_script: rm -rf $CARGO_HOME/registry/index
 

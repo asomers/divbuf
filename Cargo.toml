@@ -17,6 +17,13 @@ exclude       = [
     ".travis.yml"
 ]
 
+[package.metadata.docs.rs]
+features = ["experimental"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+experimental = []
+
 [dependencies]
 
 [dev-dependencies]
