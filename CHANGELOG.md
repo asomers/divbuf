@@ -1,4 +1,4 @@
-## [Unreleased] - ReleaseDate
+## [0.4.0] - 2025-01-18
 ### Added
 - `DivBufInaccessible` has neither read nor write access, but it is `Clone`,
   and can be upgraded to an accessible buffer.  It's useful for recreating a

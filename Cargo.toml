@@ -1,6 +1,6 @@
 [package]
 name = "divbuf"
-version = "0.3.2-pre"
+version = "0.4.0"
 authors = ["Alan Somers <asomers@gmail.com>"]
 edition = "2018"
 license = "MIT"
