@@ -6,7 +6,8 @@
   ([#15](https://github.com/asomers/divbuf/pull/15))
 
 - `DivBufShared::uninitialized` creates a DivBufShared with an uninitialized
-  buffer.
+  buffer.  It is gated by the `experimental` feature, and won't likely remain
+  in its current form indefinitely.
   ([#6](https://github.com/asomers/divbuf/pull/6))
 
 - `impl TryFrom<DivBufShared> for Vec<u8>` to extract the backing Vec from a
