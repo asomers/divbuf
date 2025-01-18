@@ -1,4 +1,4 @@
-## [Unreleased] - RelaseDate
+## [Unreleased] - ReleaseDate
 ### Added
 - `DivBufInaccessible` has neither read nor write access, but it is `Clone`,
   and can be upgraded to an accessible buffer.  It's useful for recreating a
