@@ -1,3 +1,10 @@
+## [Unreleased] - ReleaseDate
+
+### Fixed
+
+- Fixed the documentation on docs.rs.  No code change.
+  ([#27](https://github.com/asomers/divbuf/pull/27))
+
 ## [0.4.0] - 2025-01-18
 ### Added
 - `DivBufInaccessible` has neither read nor write access, but it is `Clone`,
