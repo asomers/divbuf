@@ -41,7 +41,7 @@
 //! ```
 //!
 //! [`bytes`]: https://carllerche.github.io/bytes/bytes/index.html
-
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(warnings, missing_docs, missing_debug_implementations)]
 
 mod divbuf;
