@@ -10,9 +10,9 @@
 //!
 //! This crate is similar to [`bytes`], but with a few key differences:
 //! - `bytes` is a COW crate.  Data will be shared between multiple objects as
-//!    much as possible, but sometimes the data will be copied to new storage.
-//!    `divbuf`, onthe other hand, will _never_ copy data unless explicitly
-//!    requested.
+//!   much as possible, but sometimes the data will be copied to new storage.
+//!   `divbuf`, onthe other hand, will _never_ copy data unless explicitly
+//!   requested.
 //! - A `BytesMut` object always has the sole ability to access its own data.
 //!   Once a `BytesMut` object is created, there is no other way to modify or
 //!   even read its data that doesn't involve that object.  A `DivBufMut`, on
