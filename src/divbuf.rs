@@ -3,7 +3,6 @@
 use std::{
     borrow::{Borrow, BorrowMut},
     cmp,
-    convert::TryFrom,
     error,
     fmt::{self, Debug, Formatter},
     hash,
@@ -1195,12 +1194,11 @@ impl io::Write for DivBufMut {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.try_extend(buf)
             .map(|_| buf.len())
-            .map_err(|s| io::Error::new(io::ErrorKind::Other, s))
+            .map_err(io::Error::other)
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.try_extend(buf)
-            .map_err(|s| io::Error::new(io::ErrorKind::Other, s))
+        self.try_extend(buf).map_err(io::Error::other)
     }
 
     fn flush(&mut self) -> io::Result<()> {

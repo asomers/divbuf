@@ -7,11 +7,11 @@ use std::{
     convert::TryInto,
     hash::{Hash, Hasher},
     io::Write,
+    sync::LazyLock,
     thread,
 };
 
 use divbuf::*;
-use lazy_static::lazy_static;
 
 fn simple_hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
@@ -232,10 +232,8 @@ mod divbufshared {
 
     #[test]
     pub fn sync() {
-        lazy_static! {
-            pub static ref DBS: DivBufShared =
-                DivBufShared::from(vec![0; 4096]);
-        }
+        pub static DBS: LazyLock<DivBufShared> =
+            LazyLock::new(|| DivBufShared::from(vec![0; 4096]));
         let r = &DBS;
         thread::spawn(move || {
             let _ = r;
@@ -479,11 +477,10 @@ mod divbuf_ {
 
     #[test]
     pub fn sync() {
-        lazy_static! {
-            pub static ref DBS: DivBufShared =
-                DivBufShared::from(vec![0; 4096]);
-            pub static ref DB: DivBuf = DBS.try_const().unwrap();
-        }
+        pub static DBS: LazyLock<DivBufShared> =
+            LazyLock::new(|| DivBufShared::from(vec![0; 4096]));
+        pub static DB: LazyLock<DivBuf> =
+            LazyLock::new(|| DBS.try_const().unwrap());
         let r = &DB;
         thread::spawn(move || {
             let _ = r;
@@ -682,12 +679,12 @@ mod divbuf_inaccessible {
 
     #[test]
     pub fn sync() {
-        lazy_static! {
-            pub static ref DBS: DivBufShared =
-                DivBufShared::from(vec![0; 4096]);
-            pub static ref DB: DivBuf = DBS.try_const().unwrap();
-            pub static ref DBI: DivBufInaccessible = DB.clone_inaccessible();
-        }
+        pub static DBS: LazyLock<DivBufShared> =
+            LazyLock::new(|| DivBufShared::from(vec![0; 4096]));
+        pub static DB: LazyLock<DivBuf> =
+            LazyLock::new(|| DBS.try_const().unwrap());
+        pub static DBI: LazyLock<DivBufInaccessible> =
+            LazyLock::new(|| DB.clone_inaccessible());
         let r = &DBI;
         thread::spawn(move || {
             let _ = r;
@@ -943,11 +940,10 @@ mod divbuf_mut {
 
     #[test]
     pub fn sync() {
-        lazy_static! {
-            pub static ref DBS: DivBufShared =
-                DivBufShared::from(vec![0; 4096]);
-            pub static ref DBM: DivBufMut = DBS.try_mut().unwrap();
-        }
+        pub static DBS: LazyLock<DivBufShared> =
+            LazyLock::new(|| DivBufShared::from(vec![0; 4096]));
+        pub static DBM: LazyLock<DivBufMut> =
+            LazyLock::new(|| DBS.try_mut().unwrap());
         let r = &DBM;
         thread::spawn(move || {
             let _ = r;

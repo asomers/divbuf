@@ -1,3 +1,9 @@
+## [Unreleased] - ReleaseDate
+
+### Changed
+
+- The MSRV has been raised to 1.80.0.
+
 ## [0.4.1] - 2025-02-20
 
 ### Fixed
