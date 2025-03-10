@@ -1,18 +1,19 @@
 // vim: tw=80
 
 use std::{
-    sync::atomic::{AtomicBool, Ordering::Relaxed},
+    sync::{
+        atomic::{AtomicBool, Ordering::Relaxed},
+        LazyLock,
+    },
     thread,
     time,
 };
 
 use divbuf::*;
-use lazy_static::lazy_static;
 
-lazy_static! {
-    pub static ref DBS: DivBufShared = DivBufShared::from(vec![0; 4096]);
-    pub static ref SHUTDOWN: AtomicBool = AtomicBool::new(false);
-}
+pub static DBS: LazyLock<DivBufShared> =
+    LazyLock::new(|| DivBufShared::from(vec![0; 4096]));
+pub static SHUTDOWN: AtomicBool = AtomicBool::new(false);
 
 fn readfunc() {
     let mut losses: u64 = 0;
