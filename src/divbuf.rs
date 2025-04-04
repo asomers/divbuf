@@ -9,6 +9,7 @@ use std::{
     io,
     mem,
     ops,
+    ptr,
     sync::atomic::{
         self,
         AtomicUsize,
@@ -661,7 +662,9 @@ impl DivBuf {
     /// assert_eq!(db0, [1, 2, 3, 4, 5, 6][..]);
     /// ```
     pub fn unsplit(&mut self, other: DivBuf) -> Result<(), DivBuf> {
-        if self.inner != other.inner || (self.begin + self.len) != other.begin {
+        if !ptr::eq(self.inner, other.inner)
+            || (self.begin + self.len) != other.begin
+        {
             Err(other)
         } else {
             self.len += other.len;
@@ -1062,7 +1065,9 @@ impl DivBufMut {
     /// assert_eq!(dbm0, [1, 2, 3, 4, 5, 6][..]);
     /// ```
     pub fn unsplit(&mut self, other: DivBufMut) -> Result<(), DivBufMut> {
-        if self.inner != other.inner || (self.begin + self.len) != other.begin {
+        if !ptr::eq(self.inner, other.inner)
+            || (self.begin + self.len) != other.begin
+        {
             Err(other)
         } else {
             self.len += other.len;
