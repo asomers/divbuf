@@ -357,7 +357,7 @@ impl DivBufShared {
 impl Debug for DivBufShared {
     fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
         let inner = unsafe { &*self.inner };
-        write!(f, "DivBufShared {{ inner: {:?} }}", inner)
+        write!(f, "DivBufShared {{ inner: {inner:?} }}")
     }
 }
 

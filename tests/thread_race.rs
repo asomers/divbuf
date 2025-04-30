@@ -28,7 +28,7 @@ fn readfunc() {
             losses += 1;
         }
     }
-    println!("reader won {} races and lost {}", wins, losses);
+    println!("reader won {wins} races and lost {losses}");
 }
 
 fn writefunc() {
@@ -43,7 +43,7 @@ fn writefunc() {
             losses += 1;
         }
     }
-    println!("writer won {} races and lost {}", wins, losses);
+    println!("writer won {wins} races and lost {losses}");
 }
 
 /// Create a multitude of threads that each try to divide a common static
