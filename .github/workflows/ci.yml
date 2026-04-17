@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rust_version: "1.80.0"
+          - rust_version: "stable"
+          - rust_version: "nightly"
+    name: ${{ matrix.rust_version }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust_version }}
+      - name: Build
+        run: cargo build --all-features
+      - name: Test
+        run: cargo test --all-features
+      - name: Benchmark
+        if: matrix.rust_version == 'nightly'
+        run: cargo test --all-features --bench '*'
+      - name: Clippy
+        if: matrix.rust_version == 'nightly'
+        run: |
+          rustup component add clippy
+          cargo clippy --all-features --all-targets -- -D warnings
+      - name: ASAN
+        if: matrix.rust_version == 'nightly'
+        run: |
+          rustup component add rust-src
+          RUSTFLAGS="-Z sanitizer=address" cargo test --all-features --tests
+      - name: Fmt
+        if: matrix.rust_version == 'nightly'
+        run: |
+          rustup component add rustfmt
+          cargo fmt -- --check
+      - name: Audit
+        if: matrix.rust_version == 'nightly'
+        run: |
+          cargo install cargo-audit
+          cargo audit
+
+  minver:
+    runs-on: ubuntu-latest
+    name: minver
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+      - name: Test
+        run: |
+          cargo update -Zdirect-minimal-versions
+          cargo test

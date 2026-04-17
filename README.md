@@ -2,7 +2,7 @@
 
 A library providing recursively divisible buffer objects.
 
-[![Build Status](https://travis-ci.org/asomers/divbuf.svg?branch=master)](https://travis-ci.org/asomers/divbuf)
+[![CI](https://github.com/asomers/divbuf/actions/workflows/ci.yml/badge.svg)](https://github.com/asomers/divbuf/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/divbuf.svg?maxAge=2592000)](https://crates.io/crates/divbuf)
 
 [Documentation](https://docs.rs/divbuf)
