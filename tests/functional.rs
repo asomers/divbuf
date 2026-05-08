@@ -196,7 +196,7 @@ mod divbufshared {
     pub fn fmt() {
         let v = Vec::<u8>::with_capacity(64);
         let dbs = DivBufShared::from(v);
-        let output = format!("{:?}", &dbs);
+        let output = format!("{:?}", dbs);
         let expected = "DivBufShared { inner: Inner { vec: [], accessors: 0, \
                         sharers: 1 } }";
         assert_eq!(output, expected);
